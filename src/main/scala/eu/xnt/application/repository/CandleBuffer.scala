@@ -1,15 +1,13 @@
 package eu.xnt.application.repository
 
-import eu.xnt.application.CandleModels.Candle
-import eu.xnt.application.CandleModels.Candle
-import eu.xnt.application.model.Ticker
-import eu.xnt.application.{CandleModels, Quote}
+import eu.xnt.application.model.CandleModels.Candle
+import eu.xnt.application.model.{CandleModels, Quote}
 
 import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class CandleBuffer(val ticker: Ticker) {
+class CandleBuffer(val ticker: String) {
 
     private val buffer: mutable.Stack[Candle] = mutable.Stack()
     /**
@@ -21,7 +19,7 @@ class CandleBuffer(val ticker: Ticker) {
         if buffer.isEmpty then
             buffer.push(CandleModels.newCandleFromQuote(quote)) // 0
         else
-            val lastCandle = buffer.last
+            val lastCandle = buffer.head
             val quoteTS = LocalDateTime.ofInstant(Instant.ofEpochMilli(quote.timestamp), ZoneId.of("UTC"))
             val candleEndTS = lastCandle.timestamp.plus(scala.jdk.javaapi.DurationConverters.toJava(lastCandle.duration))
             if quoteTS.compareTo(candleEndTS) > 0 then
@@ -35,5 +33,5 @@ class CandleBuffer(val ticker: Ticker) {
     }
 
     override def toString: String =
-        String(s"<${ticker.name}>: ${(for (candle <- buffer) yield candle).mkString(", ")}")
+        String(s"<${ticker}>: ${(for (candle <- buffer) yield candle).mkString(", ")}")
 }

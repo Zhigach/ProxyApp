@@ -1,11 +1,7 @@
-package eu.xnt.application
-
-import CandleModels.Candle
-import eu.xnt.application.model.Ticker
+package eu.xnt.application.model
 
 import java.nio.ByteBuffer
-import java.time.temporal.ChronoUnit
-import java.time.{Instant, LocalDateTime, ZoneId, ZonedDateTime}
+import java.time.{Instant, ZoneId, ZonedDateTime}
 
 object Quote {
     def fromByteBuffer(bytes: ByteBuffer): Quote = {
@@ -18,11 +14,11 @@ object Quote {
             )
         val price = bytes.getDouble
         val size = bytes.getInt
-        new Quote(1, ts, tickerLength, Ticker(ticker), price, size)
+        new Quote(1, ts, tickerLength, ticker, price, size)
     }
 }
 
-final case class Quote(len: Short, timestamp: Long, tickerLen: Short, ticker: Ticker, price: Double, size: Int) {
+final case class Quote(len: Short, timestamp: Long, tickerLen: Short, ticker: String, price: Double, size: Int) {
     override def toString: String =
         val time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC"))
         String(s"[$time]: $ticker P: $price, S: $size")

@@ -1,14 +1,12 @@
-package eu.xnt.application
+package eu.xnt.application.model
 
-import eu.xnt.application.model.Ticker
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, LocalDateTime, ZoneId}
-import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration.*
 
 object CandleModels {
-
-    case class Candle(ticker: Ticker,
+        
+    case class Candle (ticker: String,
                       timestamp: LocalDateTime,
                       duration: FiniteDuration = 1.minute,
                       open: Double,
@@ -21,12 +19,12 @@ object CandleModels {
         }
     }
 
-    case class CandleRequest(ticker: Ticker, limit: Int)
+    case class CandleRequest(ticker: String, limit: Int)
 
     case class CandleResponse(candles: Array[Candle])
 
-
-
+    
+    
     def updateCandle(quote: Quote, candle: Candle): Candle = {
         val price = quote.price
         val h = math.max(candle.high, price)

@@ -1,14 +1,10 @@
 package eu.xnt.application.repository
 
-import akka.actor.{Actor, ActorLogging}
-import eu.xnt.application.CandleModels.{Candle, CandleRequest}
-import eu.xnt.application.CandleModels.Candle
-import eu.xnt.application.{CandleModels, Quote}
-import eu.xnt.application.model.Ticker
+import eu.xnt.application.model.CandleModels.Candle
+import eu.xnt.application.model.{CandleModels, Quote}
 
 import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class InMemoryCandleRepository {
@@ -26,13 +22,12 @@ class InMemoryCandleRepository {
                 candleBuffers.addOne(CandleBuffer(ticker))
                 val newBuffer = getBuffer(ticker)
                 newBuffer.get.addQuote(q)
-
         //TODO: remove debug
         println("- - - - -"); candleBuffers.foreach(println(_)); println("- - - - -")
 
     }
 
-    def getLastCandle(ticker: Ticker, limit: Int): Array[Candle] =
+    def getLastCandle(ticker: String, limit: Int): Array[Candle] =
         val buffer = getBuffer(ticker)
         buffer match
             case Some(buf) =>
@@ -40,9 +35,7 @@ class InMemoryCandleRepository {
             case None =>
                 Array[Candle]()
 
-    private def getBuffer(ticker: Ticker): Option[CandleBuffer] = {
+    private def getBuffer(ticker: String): Option[CandleBuffer] =
         val buffer = candleBuffers.find(b => b.ticker == ticker)
         buffer
-    }
-
 }
