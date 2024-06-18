@@ -20,8 +20,8 @@ class CandleBuffer(val ticker: String) {
             buffer.push(CandleModels.newCandleFromQuote(quote)) // 0
         else
             val lastCandle = buffer.head
-            val quoteTS = LocalDateTime.ofInstant(Instant.ofEpochMilli(quote.timestamp), ZoneId.of("UTC"))
-            val candleEndTS = lastCandle.timestamp.plus(scala.jdk.javaapi.DurationConverters.toJava(lastCandle.duration))
+            val quoteTS = quote.timestamp
+            val candleEndTS = lastCandle.timestamp + lastCandle.duration
             if quoteTS.compareTo(candleEndTS) > 0 then
                 buffer.push(CandleModels.newCandleFromQuote(quote)) // 1
             else

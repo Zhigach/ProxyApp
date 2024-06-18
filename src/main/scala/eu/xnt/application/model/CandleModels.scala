@@ -1,14 +1,21 @@
 package eu.xnt.application.model
 
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat}
+
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.concurrent.duration.*
 
 object CandleModels {
-        
+
+    trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {        
+        implicit val candleFormat: RootJsonFormat[Candle] = jsonFormat8(Candle.apply)
+    }
+
     case class Candle (ticker: String,
-                      timestamp: LocalDateTime,
-                      duration: FiniteDuration = 1.minute,
+                      timestamp: Long,
+                      duration: Long = 60000, //time span in millis
                       open: Double,
                       high: Double,
                       low: Double,
@@ -23,8 +30,8 @@ object CandleModels {
 
     case class CandleResponse(candles: Array[Candle])
 
-    
-    
+
+
     def updateCandle(quote: Quote, candle: Candle): Candle = {
         val price = quote.price
         val h = math.max(candle.high, price)
@@ -33,11 +40,10 @@ object CandleModels {
         candle.copy(high = h, low = l, volume = vol, close=quote.price)
     }
 
-    def newCandleFromQuote(quote: Quote): Candle = {
-        val quoteTS = LocalDateTime.ofInstant(Instant.ofEpochMilli(quote.timestamp), ZoneId.of("UTC"))
+    def newCandleFromQuote(quote: Quote): Candle = {        
         Candle(
             ticker = quote.ticker,
-            timestamp = quoteTS.truncatedTo(ChronoUnit.MINUTES),
+            timestamp = (quote.timestamp / 60000) * 60000,
             open = quote.price,
             high = quote.price,
             low = quote.price,
