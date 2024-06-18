@@ -1,13 +1,10 @@
 package eu.xnt.application.model
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.util.Collections
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
-
-import java.time.{Instant, LocalDateTime, ZoneId}
 import spray.json.*
 
-import scala.collection.immutable.{AbstractSeq, LinearSeq}
+import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneId, ZonedDateTime}
 
 object CandleModels {
 
@@ -16,7 +13,10 @@ object CandleModels {
             def write(c: Candle): JsObject =
                 JsObject(
                     "ticker" -> JsString(c.ticker),
-                    "timestamp" -> JsNumber(c.timestamp),
+                    "timestamp" -> JsString(
+                        ZonedDateTime.ofInstant(Instant.ofEpochMilli(c.timestamp), ZoneId.of("UTC"))
+                            .format(DateTimeFormatter.ISO_INSTANT)
+                    ),
                     "open" -> JsNumber(c.open),
                     "high" -> JsNumber(c.high),
                     "low" -> JsNumber(c.low),
@@ -35,12 +35,9 @@ object CandleModels {
                             low = low.toDouble,
                             close = close.toDouble,
                             volume = volume.toInt)
-                    case _ => throw new DeserializationException("Candle JSON expected")
+                    case _ => throw DeserializationException("Candle JSON expected")
             }
         }
-            //jsonFormat[String, Long, Long, Double, Double, Double, Double, Int, Candle]
-        // (Candle.apply, "ticker", "timestamp", "duration", "open", "close", "high", "low", "volume")
-
     }
 
     case class Candle (ticker: String,
@@ -52,15 +49,18 @@ object CandleModels {
                       close: Double,
                       volume: Int) extends JsonSupport {
         override def toString: String = {
-            //String(s"$timestamp: O: $open, C: $close, VOL: $volume")
-            import spray.json.enrichAny
-            this.toJson.toString
+            this.toJson.compactPrint
         }
     }
 
     case class CandleRequest(ticker: String, limit: Int)
 
-    case class CandleResponse(candles: Array[Candle])
+    case class CandleResponse(candles: Array[Candle]) extends JsonSupport {
+        override def toString: String = {
+            val jsArray = (for (c <- candles) yield c.toJson).toVector
+            JsArray(jsArray).compactPrint
+        }
+    }
 
 
 
@@ -73,28 +73,15 @@ object CandleModels {
     }
 
     def newCandleFromQuote(quote: Quote): Candle = {
-        try {
-            Candle(
-                ticker = quote.ticker,
-                timestamp = (quote.timestamp / 60000) * 60000,
-                open = quote.price,
-                high = quote.price,
-                low = quote.price,
-                close = quote.price,
-                volume = quote.size
-            )
-        } catch
-            case e: Exception => println(e.getMessage);
-                Candle(
-                    ticker = quote.ticker,
-                    timestamp = (quote.timestamp / 60000) * 60000,
-                    open = quote.price,
-                    high = quote.price,
-                    low = quote.price,
-                    close = quote.price,
-                    volume = quote.size
-            )
-
+        Candle(
+            ticker = quote.ticker,
+            timestamp = (quote.timestamp / 60000) * 60000,
+            open = quote.price,
+            high = quote.price,
+            low = quote.price,
+            close = quote.price,
+            volume = quote.size
+        )
     }
 
 }

@@ -1,6 +1,6 @@
 package eu.xnt.application.repository
 
-import eu.xnt.application.model.CandleModels.Candle
+import eu.xnt.application.model.CandleModels.{Candle, CandleResponse}
 import eu.xnt.application.model.{CandleModels, Quote}
 
 import java.time.{Instant, LocalDateTime, ZoneId}
@@ -22,7 +22,6 @@ class CandleBuffer(val ticker: String) {
             val lastCandle = buffer.head
             val quoteTS: Long = quote.timestamp
             val candleEndTS: Long = lastCandle.timestamp + lastCandle.duration
-            println(s"TSs: $quoteTS -> $candleEndTS")
             if quoteTS.compareTo(candleEndTS) > 0 then
                 buffer.push(CandleModels.newCandleFromQuote(quote)) // 1
             else
@@ -33,6 +32,6 @@ class CandleBuffer(val ticker: String) {
         buffer.takeRight(limit).toArray
     }
 
-    override def toString: String =
-        String(s"${(for (candle <- buffer) yield candle).mkString(", ")}")
+    override def toString: String =        
+        CandleResponse(buffer.toArray).toString
 }
