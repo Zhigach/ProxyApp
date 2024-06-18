@@ -10,6 +10,7 @@ val AkkaHttpVersion = "10.6.3"
 libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
     "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
+    "io.spray" %% "spray-json" % "1.3.6",
     "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
     "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
     "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % Test,

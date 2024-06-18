@@ -34,5 +34,5 @@ class CandleBuffer(val ticker: String) {
     }
 
     override def toString: String =
-        String(s"<${ticker}>: ${(for (candle <- buffer) yield candle).mkString(", ")}")
+        String(s"${(for (candle <- buffer) yield candle).mkString(", ")}")
 }
