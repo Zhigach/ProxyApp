@@ -3,7 +3,7 @@ package eu.xnt.application.stream
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import Command.*
 import eu.xnt.application.model.Quote
-import eu.xnt.application.repository.{PersistenceRepository, QuoteReceiverActor}
+import eu.xnt.application.repository.QuoteReceiverActor
 
 import java.io.InputStream
 import java.nio.ByteBuffer

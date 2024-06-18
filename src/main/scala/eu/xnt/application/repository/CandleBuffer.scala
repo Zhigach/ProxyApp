@@ -20,8 +20,9 @@ class CandleBuffer(val ticker: String) {
             buffer.push(CandleModels.newCandleFromQuote(quote)) // 0
         else
             val lastCandle = buffer.head
-            val quoteTS = quote.timestamp
-            val candleEndTS = lastCandle.timestamp + lastCandle.duration
+            val quoteTS: Long = quote.timestamp
+            val candleEndTS: Long = lastCandle.timestamp + lastCandle.duration
+            println(s"TSs: $quoteTS -> $candleEndTS")
             if quoteTS.compareTo(candleEndTS) > 0 then
                 buffer.push(CandleModels.newCandleFromQuote(quote)) // 1
             else

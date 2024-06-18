@@ -1,16 +1,16 @@
 package eu.xnt.application.model
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-import java.time.temporal.ChronoUnit
 import java.time.{Instant, LocalDateTime, ZoneId}
-import scala.concurrent.duration.*
 
 object CandleModels {
 
-    trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {        
-        implicit val candleFormat: RootJsonFormat[Candle] = jsonFormat8(Candle.apply)
+    trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
+        implicit val candleFormat: RootJsonFormat[Candle] = jsonFormat
+          [String, Long, Long, Double, Double, Double, Double, Int, Candle]
+          (Candle, "ticker", "timestamp", "duration", "open", "close", "high", "low", "volume")
     }
 
     case class Candle (ticker: String,
@@ -20,7 +20,7 @@ object CandleModels {
                       high: Double,
                       low: Double,
                       close: Double,
-                      volume: Int) {
+                      volume: Int) extends JsonSupport {
         override def toString: String = {
             String(s"$timestamp: O: $open, C: $close, VOL: $volume")
         }
@@ -40,16 +40,29 @@ object CandleModels {
         candle.copy(high = h, low = l, volume = vol, close=quote.price)
     }
 
-    def newCandleFromQuote(quote: Quote): Candle = {        
-        Candle(
-            ticker = quote.ticker,
-            timestamp = (quote.timestamp / 60000) * 60000,
-            open = quote.price,
-            high = quote.price,
-            low = quote.price,
-            close = quote.price,
-            volume = quote.size
-        )
+    def newCandleFromQuote(quote: Quote): Candle = {
+        try {
+            Candle(
+                ticker = quote.ticker,
+                timestamp = (quote.timestamp / 60000) * 60000,
+                open = quote.price,
+                high = quote.price,
+                low = quote.price,
+                close = quote.price,
+                volume = quote.size
+            )
+        } catch
+            case e: Exception => println(e.getMessage);
+                Candle(
+                    ticker = quote.ticker,
+                    timestamp = (quote.timestamp / 60000) * 60000,
+                    open = quote.price,
+                    high = quote.price,
+                    low = quote.price,
+                    close = quote.price,
+                    volume = quote.size
+            )
+
     }
 
 }

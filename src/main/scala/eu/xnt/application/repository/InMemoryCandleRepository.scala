@@ -16,9 +16,9 @@ class InMemoryCandleRepository {
         val quoteTS = LocalDateTime.ofInstant(Instant.ofEpochMilli(q.timestamp), ZoneId.of("UTC"))
         val buffer = getBuffer(ticker)
         buffer match
-            case Some(buf) =>
+            case Some(buf) =>                
                 buf.addQuote(q)
-            case None => // если буфера для такого тикера нет, то создаем новый
+            case None => // если буфера для такого тикера нет, то создаем новый                
                 candleBuffers.addOne(CandleBuffer(ticker))
                 val newBuffer = getBuffer(ticker)
                 newBuffer.get.addQuote(q)
@@ -36,6 +36,6 @@ class InMemoryCandleRepository {
                 Array[Candle]()
 
     private def getBuffer(ticker: String): Option[CandleBuffer] =
-        val buffer = candleBuffers.find(b => b.ticker == ticker)
+        val buffer = candleBuffers.find(b => b.ticker == ticker)        
         buffer
 }
