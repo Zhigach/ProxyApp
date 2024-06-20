@@ -11,6 +11,9 @@ class InMemoryCandleRepository {
 
     private val candleBuffers: ArrayBuffer[CandleBuffer] = ArrayBuffer()
 
+    def getIterableBuffer(depth: Int): Array[Candle] =
+        candleBuffers.flatMap(cb => cb.getCandles(depth)).toArray
+
     def addQuote(q: Quote): Unit = {        
         val ticker = q.ticker
         val quoteTS = LocalDateTime.ofInstant(Instant.ofEpochMilli(q.timestamp), ZoneId.of("UTC"))
@@ -23,7 +26,7 @@ class InMemoryCandleRepository {
                 val newBuffer = getBuffer(ticker)
                 newBuffer.get.addQuote(q)
         //TODO: remove debug
-        println("- - - - -"); candleBuffers.foreach(println(_)); println("- - - - -")
+        //println("- - - - -"); candleBuffers.foreach(println(_)); println("- - - - -")
 
     }
 

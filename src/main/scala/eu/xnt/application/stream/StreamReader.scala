@@ -3,18 +3,19 @@ package eu.xnt.application.stream
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import Command.*
 import eu.xnt.application.model.Quote
-import eu.xnt.application.repository.QuoteReceiverActor
+import eu.xnt.application.repository.RepositoryActor
 
 import java.io.InputStream
 import java.nio.ByteBuffer
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class StreamHandler(connection: ConnectionAddress) extends Actor with ActorLogging {
+class StreamReader(connection: ConnectionAddress, quoteReceiver: ActorRef) extends Actor with ActorLogging {
 
-    //private val candleRepository: ActorRef = context.actorOf(Props[PersistenceRepository](), "persistent-quote-repository")
-    private val candleRepository: ActorRef = context.actorOf(Props[QuoteReceiverActor](), "QuoteReceiverActor")
+    //private val quoteReceiver: ActorRef = context.actorOf(Props[RepositoryActor](), "QuoteReceiverActor")
 
+    def getCandleRepository: ActorRef = quoteReceiver
+    
     def connect(): Unit = {
         val inputStream = connection.getStream
         inputStream match
@@ -34,7 +35,7 @@ class StreamHandler(connection: ConnectionAddress) extends Actor with ActorLoggi
             try {
                 val msgLength: Short = ByteBuffer.wrap(inputStream.readNBytes(2)).getShort
                 val messageBuffer: ByteBuffer = ByteBuffer.wrap(inputStream.readNBytes(msgLength))
-                candleRepository ! Quote.fromByteBuffer(messageBuffer)
+                quoteReceiver ! Quote.fromByteBuffer(messageBuffer)
             } catch
                 case exception: RuntimeException =>
                     log.error(s"Exception occurred reading stream: ${exception.getMessage}")

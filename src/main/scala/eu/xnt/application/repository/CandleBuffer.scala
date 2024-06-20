@@ -7,7 +7,7 @@ import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class CandleBuffer(val ticker: String) {
+class CandleBuffer(val ticker: String) extends Iterable[Candle] {
 
     private val buffer: mutable.Stack[Candle] = mutable.Stack()
     /**
@@ -34,4 +34,6 @@ class CandleBuffer(val ticker: String) {
 
     override def toString: String =        
         CandleResponse(buffer.toArray).toString
+
+    override def iterator: Iterator[Candle] = buffer.iterator
 }
