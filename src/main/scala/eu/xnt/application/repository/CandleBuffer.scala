@@ -3,13 +3,11 @@ package eu.xnt.application.repository
 import eu.xnt.application.model.CandleModels.{Candle, CandleResponse}
 import eu.xnt.application.model.{CandleModels, Quote}
 
-import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 class CandleBuffer(val ticker: String) extends Iterable[Candle] {
 
-    private val buffer: mutable.Stack[Candle] = mutable.Stack()
+    val buffer: mutable.Stack[Candle] = mutable.Stack()
     /**
      * 0) если свечек для инструмента  нет, то создаём первую свечу
      * 1) Если таймстемп котировки позднее (таймстемп + длительности последней свечки), то создаем новую

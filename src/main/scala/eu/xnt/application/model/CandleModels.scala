@@ -1,13 +1,9 @@
 package eu.xnt.application.model
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json.*
 
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId, ZonedDateTime}
-
 object CandleModels {
-    
+
     case class Candle (ticker: String,
                       timestamp: Long,
                       duration: Long = 60000, //time span in millis

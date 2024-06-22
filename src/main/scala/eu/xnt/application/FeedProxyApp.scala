@@ -9,7 +9,7 @@ import eu.xnt.application.stream.{ConnectionAddress, StreamReader}
 
 object FeedProxyApp extends App {
 
-    implicit val system: ActorSystem = ActorSystem("FeedProxyActorSystem")
+    //implicit val system: ActorSystem = ActorSystem("FeedProxyActorSystem")
 
     val proxyServer = ProxyServer
 

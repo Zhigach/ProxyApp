@@ -1,26 +1,24 @@
 package eu.xnt.application.server
 
-import akka.NotUsed
+import akka.Done
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
-import akka.http.scaladsl.model.HttpMethods.*
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, StatusCode, Uri}
 import akka.http.scaladsl.server.Route
-import akka.pattern.ask
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.util.Timeout
-import eu.xnt.application.FeedProxyApp.system
-import eu.xnt.application.model.CandleModels.{Candle, HistoryRequest, TickerCandlesRequest}
-import eu.xnt.application.repository.{CandleBuffer, InMemoryCandleRepository, RepositoryActor}
+import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{CompletionStrategy, OverflowStrategy}
+import akka.util.ByteString
+import eu.xnt.application.model.CandleModels.Candle
+import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
 import eu.xnt.application.stream.Command.Connect
 import eu.xnt.application.stream.{ConnectionAddress, StreamReader}
+import spray.json.enrichAny
 
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
 
 
 object ProxyServer {
@@ -29,14 +27,34 @@ object ProxyServer {
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
     implicit val jsonEntityStreamingSupport: JsonEntityStreamingSupport = EntityStreamingSupport.json()
 
-
-
     private val repository = InMemoryCandleRepository()
 
     private val repositoryActor = system.actorOf(Props.create(classOf[RepositoryActor], repository), "RepositoryActor")
 
     private val connection: ConnectionAddress = ConnectionAddress("localhost", 5555)
     private val streamReaderActor = system.actorOf(Props.create(classOf[StreamReader], connection, repositoryActor), "StreamHandler")
+
+
+    val (sourceActorRef, source) =
+        Source.actorRef[Candle](
+            completionMatcher = {
+                case Done =>
+                    CompletionStrategy.immediately
+                },
+            failureMatcher = PartialFunction.empty,
+            bufferSize = 100,
+            overflowStrategy = OverflowStrategy.dropHead)
+          .preMaterialize()
+
+    source.runWith(Sink.ignore)
+
+    system.scheduler.scheduleWithFixedDelay( // TODO remove debugging
+          initialDelay = Duration.Zero,
+          delay = 1 second)
+      (() => {
+          sourceActorRef ! Candle(ticker = "TEST", timestamp = System.currentTimeMillis(), open = 1, high = 1, low = 1, close = 1, volume = 10)
+      }
+      )(system.dispatcher)
 
     private val routes: Route =
         get {
@@ -49,8 +67,12 @@ object ProxyServer {
                 },
                 path("candles") {
                     import eu.xnt.application.model.JsonSupport.CandleJsonFormat
-                    val candles: Source[Candle, NotUsed] = Source(repository.getIterableBuffer(10))
-                    complete(candles) //TODO no stream given, only JSON array. Probably static link to storage must be provided
+                    complete(
+                        HttpEntity(
+                            ContentTypes.`application/json`,
+                            source.map(can => ByteString(can.toJson.compactPrint + '\n')) //TODO узнать почему мне приходится делать это говно
+                        )
+                    )
                 }
             )
         }
@@ -58,4 +80,5 @@ object ProxyServer {
     private val bindingFuture = Http().newServerAt("localhost", 8080).bind(routes)
 
     streamReaderActor ! Connect(connection)
+
 }
