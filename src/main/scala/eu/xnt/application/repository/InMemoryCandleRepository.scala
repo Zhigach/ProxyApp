@@ -18,6 +18,10 @@ class InMemoryCandleRepository {
 
     val storageCollection = Source(unsortedStorage.buffer.toArray)
 
+    def getHistoricalCandles(depth: Int): Array[Candle] = {
+        candleBuffers.flatMap(cb => cb.getHistoricalCandles(depth)).toArray
+    }
+
     def getIterableBuffer(depth: Int): Array[Candle] =
         candleBuffers.flatMap(cb => cb.getCandles(depth)).toArray
 

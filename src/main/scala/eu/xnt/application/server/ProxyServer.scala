@@ -50,7 +50,7 @@ object ProxyServer {
 
     system.scheduler.scheduleWithFixedDelay( // TODO remove debugging
           initialDelay = Duration.Zero,
-          delay = 1 second)
+          delay = 30 second)
       (() => {
           sourceActorRef ! Candle(ticker = "TEST", timestamp = System.currentTimeMillis(), open = 1, high = 1, low = 1, close = 1, volume = 10)
       }
@@ -59,18 +59,17 @@ object ProxyServer {
     private val routes: Route =
         get {
             concat(
-                pathSingleSlash {
-                    complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<html><body>Candle service home</body></html>"))
-                },
                 path("health") {
                     complete("Ok!")
                 },
                 path("candles") {
                     import eu.xnt.application.model.JsonSupport.CandleJsonFormat
+                    val candleCache = Source(repository.getHistoricalCandles(10))
                     complete(
                         HttpEntity(
                             ContentTypes.`application/json`,
-                            source.map(can => ByteString(can.toJson.compactPrint + '\n')) //TODO узнать почему мне приходится делать это говно
+                            (candleCache ++ source)
+                              .map(can => ByteString(can.toJson.compactPrint + /*->*/'\n'/*<-*/)) //TODO узнать почему мне приходится делать это говно
                         )
                     )
                 }
