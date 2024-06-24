@@ -2,7 +2,7 @@ package eu.xnt.application.repository
 
 import eu.xnt.application.model.CandleModels.{Candle, CandleResponse}
 import eu.xnt.application.model.{CandleModels, Quote}
-import eu.xnt.application.server.ProxyServer.repository
+import eu.xnt.application.utils.Math._
 
 import scala.collection.mutable
 
@@ -28,15 +28,11 @@ class CandleBuffer(val ticker: String, val duration: Long) extends Iterable[Cand
     }
 
     def getHistoricalCandles(depth: Int): Array[Candle] = {
-        //val currentTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(System.currentTimeMillis()), ZoneId.of("UTC"))
-        val currentTimeMillis = System.currentTimeMillis()
-        println(s"Candle history with depth of $depth for $ticker requested at $currentTimeMillis")
-        val lowerLimitMillis = currentTimeMillis - depth * 60000
-        val upperLimitMillis = (currentTimeMillis / 60000) * 60000
+        val currentTimeMillisRounded = System.currentTimeMillis().roundBy(duration)
+        val lowerLimitMillis = currentTimeMillisRounded - depth * duration
         val result = buffer.filter(c => (c.timestamp >= lowerLimitMillis) &&
-                            c.timestamp < upperLimitMillis)
+                            c.timestamp < currentTimeMillisRounded)
           .toArray
-        println(s"Found ${result.length} => ${result.mkString}")
         result
     }
 

@@ -60,9 +60,7 @@ object ProxyServer {
           },
           delay = FiniteDuration.apply(candleDurationMillis, TimeUnit.MILLISECONDS))
       (() => {
-          val time = System.currentTimeMillis()
-          println(s"Periodic task run at $time") // TODO remove debugging
-          for (can <- repository.getHistoricalCandles(2)) sourceActorRef ! can
+          for (can <- repository.getHistoricalCandles(1)) sourceActorRef ! can
       })(system.dispatcher)
 
     private val routes: Route =
