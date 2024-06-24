@@ -1,9 +1,8 @@
 package eu.xnt.application.stream
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef}
 import Command.*
 import eu.xnt.application.model.Quote
-import eu.xnt.application.repository.RepositoryActor
 
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -11,8 +10,6 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class StreamReader(connection: ConnectionAddress, quoteReceiver: ActorRef) extends Actor with ActorLogging {
-
-    //private val quoteReceiver: ActorRef = context.actorOf(Props[RepositoryActor](), "QuoteReceiverActor")
 
     def getCandleRepository: ActorRef = quoteReceiver
     

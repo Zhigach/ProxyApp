@@ -1,7 +1,7 @@
 package eu.xnt.application.server
 
 import akka.Done
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem, Cancellable, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
@@ -16,6 +16,7 @@ import eu.xnt.application.stream.Command.Connect
 import eu.xnt.application.stream.{ConnectionAddress, StreamReader}
 import spray.json.enrichAny
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -27,15 +28,18 @@ object ProxyServer {
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
     implicit val jsonEntityStreamingSupport: JsonEntityStreamingSupport = EntityStreamingSupport.json()
 
-    private val repository = InMemoryCandleRepository()
+    private val candleDurationMillis = 60000
+    private val initialHistoryDepth = 10
+
+    private val repository = InMemoryCandleRepository(candleDurationMillis) //TODO make it elegant
 
     private val repositoryActor = system.actorOf(Props.create(classOf[RepositoryActor], repository), "RepositoryActor")
 
     private val connection: ConnectionAddress = ConnectionAddress("localhost", 5555)
+
     private val streamReaderActor = system.actorOf(Props.create(classOf[StreamReader], connection, repositoryActor), "StreamHandler")
 
-
-    val (sourceActorRef, source) =
+    private val (sourceActorRef, source) =
         Source.actorRef[Candle](
             completionMatcher = {
                 case Done =>
@@ -48,13 +52,18 @@ object ProxyServer {
 
     source.runWith(Sink.ignore)
 
-    system.scheduler.scheduleWithFixedDelay( // TODO remove debugging
-          initialDelay = Duration.Zero,
-          delay = 30 second)
+    private val refreshJob = system.scheduler.scheduleWithFixedDelay(
+          initialDelay = {
+              val currentTimeMillis = System.currentTimeMillis()
+              val delayToFirstExecution = ((currentTimeMillis / candleDurationMillis) + 1) * candleDurationMillis - currentTimeMillis
+              Duration.create(delayToFirstExecution, TimeUnit.MILLISECONDS)
+          },
+          delay = FiniteDuration.apply(candleDurationMillis, TimeUnit.MILLISECONDS))
       (() => {
-          sourceActorRef ! Candle(ticker = "TEST", timestamp = System.currentTimeMillis(), open = 1, high = 1, low = 1, close = 1, volume = 10)
-      }
-      )(system.dispatcher)
+          val time = System.currentTimeMillis()
+          println(s"Periodic task run at $time") // TODO remove debugging
+          for (can <- repository.getHistoricalCandles(2)) sourceActorRef ! can
+      })(system.dispatcher)
 
     private val routes: Route =
         get {
@@ -64,7 +73,7 @@ object ProxyServer {
                 },
                 path("candles") {
                     import eu.xnt.application.model.JsonSupport.CandleJsonFormat
-                    val candleCache = Source(repository.getHistoricalCandles(10))
+                    val candleCache = Source(repository.getHistoricalCandles(initialHistoryDepth))
                     complete(
                         HttpEntity(
                             ContentTypes.`application/json`,

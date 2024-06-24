@@ -1,6 +1,5 @@
 package eu.xnt.application.repository
 
-import akka.stream.scaladsl.Source
 import eu.xnt.application.model.CandleModels.Candle
 import eu.xnt.application.model.{CandleModels, Quote}
 
@@ -8,15 +7,9 @@ import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 
-class InMemoryCandleRepository {
+class InMemoryCandleRepository(val candleDuration: Long) {
 
     private val candleBuffers: ArrayBuffer[CandleBuffer] = ArrayBuffer()
-
-    val unsortedStorage = CandleBuffer("COMMON")
-    
-    //val stream = Source.actorRef()
-
-    val storageCollection = Source(unsortedStorage.buffer.toArray)
 
     def getHistoricalCandles(depth: Int): Array[Candle] = {
         candleBuffers.flatMap(cb => cb.getHistoricalCandles(depth)).toArray
@@ -27,7 +20,6 @@ class InMemoryCandleRepository {
 
     def addQuote(quote: Quote, buffer: CandleBuffer): Unit = {
         buffer.addQuote(quote)
-        unsortedStorage.addQuote(quote)
     }
 
     def addQuote(q: Quote): Unit = {        
@@ -38,7 +30,7 @@ class InMemoryCandleRepository {
             case Some(buffer) =>
                 addQuote(q, buffer)
             case None => // если буфера для такого тикера нет, то создаем новый                
-                candleBuffers.addOne(CandleBuffer(ticker))
+                candleBuffers.addOne(CandleBuffer(ticker, candleDuration))
                 val newBuffer = getBuffer(ticker)
                 addQuote(q, newBuffer.get)
         //TODO: remove debug

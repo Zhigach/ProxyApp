@@ -6,7 +6,7 @@ object CandleModels {
 
     case class Candle (ticker: String,
                       timestamp: Long,
-                      duration: Long = 60000, //time span in millis
+                      duration: Long = 60000,
                       open: Double,
                       high: Double,
                       low: Double,

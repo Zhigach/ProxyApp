@@ -4,7 +4,6 @@ import akka.actor.{Actor, ActorLogging}
 import eu.xnt.application.model.CandleModels.{Candle, CandleResponse, HistoryRequest, TickerCandlesRequest}
 import eu.xnt.application.model.Quote
 
-import scala.collection.mutable.ArrayBuffer
 
 class RepositoryActor(repository: InMemoryCandleRepository) extends Actor with ActorLogging {
     
@@ -18,7 +17,6 @@ class RepositoryActor(repository: InMemoryCandleRepository) extends Actor with A
 
     override def receive: Receive = {
         case q: Quote =>
-            //log.info("Saving quote {}", q)
             addQuote(q)
         case TickerCandlesRequest(ticker, limit) =>
             val candles = getLastCandle(ticker, limit)
@@ -26,8 +24,6 @@ class RepositoryActor(repository: InMemoryCandleRepository) extends Actor with A
         case HistoryRequest(limit) =>
             val candles = iterableRepo(limit)
             sender() ! CandleResponse(candles)
-        case TickerCandlesRequest(_, limit) =>
-            
         case _ =>
             log.debug("Unsupported message received")
     }
