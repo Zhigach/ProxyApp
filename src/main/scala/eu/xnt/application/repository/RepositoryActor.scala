@@ -5,9 +5,7 @@ import eu.xnt.application.model.CandleModels.{Candle, CandleResponse, HistoryReq
 import eu.xnt.application.model.Quote
 
 
-class RepositoryActor(repository: InMemoryCandleRepository) extends Actor with ActorLogging {
-    
-    private def iterableRepo(depth: Int): Array[Candle] = repository.getIterableBuffer(depth)
+class RepositoryActor(repository: InMemoryCandleRepository) extends Actor with ActorLogging {   
 
     private def addQuote(quote: Quote): Unit =
         synchronized { repository.addQuote(quote) }
@@ -22,7 +20,7 @@ class RepositoryActor(repository: InMemoryCandleRepository) extends Actor with A
             val candles = getLastCandle(ticker, limit)
             sender() ! CandleResponse(candles)
         case HistoryRequest(limit) =>
-            val candles = iterableRepo(limit)
+            val candles = repository.getHistoricalCandles(limit)
             sender() ! CandleResponse(candles)
         case _ =>
             log.debug("Unsupported message received")

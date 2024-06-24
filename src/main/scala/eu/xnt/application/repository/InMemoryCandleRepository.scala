@@ -11,7 +11,7 @@ class InMemoryCandleRepository(val candleDuration: Long) {
 
     private val candleBuffers: ArrayBuffer[CandleBuffer] = ArrayBuffer()
 
-    def getHistoricalCandles(depth: Int): Array[Candle] = {
+    def getHistoricalCandles(depth: Int = 1): Array[Candle] = {
         candleBuffers.flatMap(cb => cb.getHistoricalCandles(depth)).toArray
     }
 

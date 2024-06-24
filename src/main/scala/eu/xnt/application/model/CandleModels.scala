@@ -19,7 +19,7 @@ object CandleModels {
 
     case class TickerCandlesRequest(ticker: String, limit: Int)
     
-    case class HistoryRequest(limit: Int)
+    case class HistoryRequest(limit: Int = 1)
 
     case class CandleResponse(candles: Array[Candle]) extends JsonSupport {
         override def toString: String = {
