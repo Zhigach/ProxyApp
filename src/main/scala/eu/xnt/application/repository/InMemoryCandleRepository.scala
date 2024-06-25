@@ -15,9 +15,6 @@ class InMemoryCandleRepository(val candleDuration: Long) {
         candleBuffers.flatMap(cb => cb.getHistoricalCandles(depth)).toArray
     }
 
-    def getIterableBuffer(depth: Int): Array[Candle] =
-        candleBuffers.flatMap(cb => cb.getCandles(depth)).toArray
-
     def addQuote(quote: Quote, buffer: CandleBuffer): Unit = {
         buffer.addQuote(quote)
     }
@@ -33,18 +30,7 @@ class InMemoryCandleRepository(val candleDuration: Long) {
                 candleBuffers.addOne(CandleBuffer(ticker, candleDuration))
                 val newBuffer = getBuffer(ticker)
                 addQuote(q, newBuffer.get)
-        //TODO: remove debug
-        //println("- - - - -"); candleBuffers.foreach(println(_)); println("- - - - -")
-
     }
-
-    def getLastCandle(ticker: String, limit: Int): Array[Candle] =
-        val buffer = getBuffer(ticker)
-        buffer match
-            case Some(buf) =>
-                buf.getCandles(limit)
-            case None =>
-                Array[Candle]()
 
     private def getBuffer(ticker: String): Option[CandleBuffer] =
         val buffer = candleBuffers.find(b => b.ticker == ticker)        
