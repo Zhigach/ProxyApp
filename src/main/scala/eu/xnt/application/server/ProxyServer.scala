@@ -13,18 +13,16 @@ import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.util.{ByteString, Timeout}
 import eu.xnt.application.model.CandleModels.{Candle, CandleResponse, HistoryRequest}
 import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
-import eu.xnt.application.stream.Command.Connect
 import eu.xnt.application.stream.{ConnectionAddress, StreamReader}
 import eu.xnt.application.utils.Math.roundBy
 import eu.xnt.application.model.JsonSupport.CandleJsonFormat
-import org.slf4j.Logger
 import spray.json.enrichAny
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
+import scala.util.Success
 
 
 object ProxyServer {
@@ -104,7 +102,5 @@ object ProxyServer {
         }
 
     private val bindingFuture = Http().newServerAt(serverAddress, bindPort).bind(routes)
-
-    streamReaderActor ! Connect(connection)
 
 }

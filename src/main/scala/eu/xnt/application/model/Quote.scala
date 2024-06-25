@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.time.{Instant, ZoneId, ZonedDateTime}
 
 object Quote {
-    def fromByteBuffer(bytes: ByteBuffer): Quote = {
+    def parse(bytes: ByteBuffer): Quote = {
         val ts = bytes.getLong
         val tickerLength = bytes.getShort
         val ticker =
