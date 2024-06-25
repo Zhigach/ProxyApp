@@ -92,7 +92,7 @@ object ProxyServer {
                                 HttpEntity(
                                     ContentTypes.`application/json`,
                                     (Source(candles.candles) ++ source)
-                                      .map(can => ByteString(can.toJson.compactPrint + '\n')) //TODO узнать почему мне приходится делать это говно
+                                      .map(can => ByteString(can.toJson.compactPrint + '\n'))
                                 )
                             )
                     }
