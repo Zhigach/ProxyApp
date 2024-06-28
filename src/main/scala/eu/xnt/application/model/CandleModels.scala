@@ -1,7 +1,5 @@
 package eu.xnt.application.model
 
-import spray.json._
-
 object CandleModels {
 
     case class Candle(ticker: String,

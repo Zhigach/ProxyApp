@@ -2,7 +2,7 @@ package eu.xnt.application.model
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import eu.xnt.application.model.CandleModels.Candle
-import spray.json.{DefaultJsonProtocol, DeserializationException, JsNumber, JsObject, JsString, JsValue, JsonReader, JsonWriter, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, DeserializationException, JsNumber, JsObject, JsString, JsValue, RootJsonFormat}
 
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.time.format.DateTimeFormatter
