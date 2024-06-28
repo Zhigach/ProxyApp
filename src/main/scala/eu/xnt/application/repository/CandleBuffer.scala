@@ -6,7 +6,7 @@ import eu.xnt.application.utils.Math._
 
 import scala.collection.mutable
 
-class CandleBuffer(val ticker: String, val duration: Long) extends Iterable[Candle] {
+case class CandleBuffer(ticker: String, duration: Long) extends Iterable[Candle] {
 
     val buffer: mutable.Stack[Candle] = mutable.Stack()
     /**
@@ -15,29 +15,26 @@ class CandleBuffer(val ticker: String, val duration: Long) extends Iterable[Cand
      * 2) если таймстемп попадает в последнюю свечу, то обновляем её и подкладываем на место последней свечи в хранилище
      */
     def addQuote(quote: Quote): Unit = {
-        if buffer.isEmpty then
+        if (buffer.isEmpty) {
             buffer.push(CandleModels.newCandleFromQuote(quote)) // 0
-        else
+        } else {
             val lastCandle = buffer.head
             val quoteTS: Long = quote.timestamp
             val candleEndTS: Long = lastCandle.timestamp + lastCandle.duration
-            if quoteTS.compareTo(candleEndTS) > 0 then
-                buffer.push(CandleModels.newCandleFromQuote(quote)) // 1
-            else
+            if (quoteTS.compareTo(candleEndTS) > 0) {
+              buffer.push(CandleModels.newCandleFromQuote(quote)) // 1
+            } else
                 buffer.push(CandleModels.updateCandle(quote, buffer.pop())) // 2
+        }
     }
 
     def getHistoricalCandles(depth: Int): Array[Candle] = {
-        val currentTimeMillisRounded = System.currentTimeMillis().roundBy(duration)
+        val currentTimeMillisRounded = roundBy(System.currentTimeMillis(), duration)
         val lowerLimitMillis = currentTimeMillisRounded - depth * duration
         val result = buffer.filter(c => (c.timestamp >= lowerLimitMillis) &&
                             c.timestamp < currentTimeMillisRounded)
           .toArray
         result
-    }
-
-    def getCandles(limit: Int): Array[Candle] = {
-        buffer.takeRight(limit).toArray
     }
 
     override def toString: String =        

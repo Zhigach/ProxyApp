@@ -1,7 +1,7 @@
 package eu.xnt.application.repository
 
 import akka.actor.{Actor, ActorLogging}
-import eu.xnt.application.model.CandleModels.{Candle, CandleResponse, HistoryRequest, TickerCandlesRequest}
+import eu.xnt.application.model.CandleModels.{CandleResponse, HistoryRequest}
 import eu.xnt.application.model.Quote
 
 

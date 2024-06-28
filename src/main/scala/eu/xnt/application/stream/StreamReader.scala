@@ -55,9 +55,10 @@ class StreamReader(connection: ConnectionAddress, quoteReceiver: ActorRef) exten
             val msgLength: Short = ByteBuffer.wrap(inputStream.readNBytes(2)).getShort
             val messageBuffer: ByteBuffer = ByteBuffer.wrap(inputStream.readNBytes(msgLength))
             Future.successful(StreamData(messageBuffer))
-        } catch
+        } catch {
             case exception: RuntimeException =>
                 Future.failed(new RuntimeException("Stream failed", exception))
+        }
     }
     
     def connect(): Future[InputStream] = {

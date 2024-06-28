@@ -2,7 +2,7 @@ package eu.xnt.application.model
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import eu.xnt.application.model.CandleModels.Candle
-import spray.json.{DefaultJsonProtocol, DeserializationException, JsNumber, JsObject, JsString, JsValue, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, DeserializationException, JsNumber, JsObject, JsString, JsValue, JsonReader, JsonWriter, RootJsonFormat}
 
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.time.format.DateTimeFormatter
@@ -26,10 +26,10 @@ object JsonSupport {
             )
 
         def read(value: JsValue): Candle = {
-            value.asJsObject.getFields("ticker", "timestamp", "open", "high", "low", "close", "volume") match
+            value.asJsObject.getFields("ticker", "timestamp", "open", "high", "low", "close", "volume") match {
                 case Seq(JsString(ticker), JsNumber(timestamp), JsNumber(open),
                 JsNumber(high), JsNumber(low), JsNumber(close), JsNumber(volume)) =>
-                    new Candle(ticker = ticker,
+                    Candle(ticker = ticker,
                         timestamp = timestamp.toLong,
                         open = open.toDouble,
                         high = high.toDouble,
@@ -37,6 +37,7 @@ object JsonSupport {
                         close = close.toDouble,
                         volume = volume.toInt)
                 case _ => throw DeserializationException("Candle JSON expected")
+            }
         }
     }
 }

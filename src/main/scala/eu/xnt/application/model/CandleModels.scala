@@ -1,32 +1,21 @@
 package eu.xnt.application.model
 
-import spray.json.*
+import spray.json._
 
 object CandleModels {
 
-    case class Candle (ticker: String,
+    case class Candle(ticker: String,
                       timestamp: Long,
                       duration: Long = 60000,
                       open: Double,
                       high: Double,
                       low: Double,
                       close: Double,
-                      volume: Int) extends JsonSupport {
-        override def toString: String = {
-            this.toJson.compactPrint
-        }
-    }
-
-    case class TickerCandlesRequest(ticker: String, limit: Int)
+                      volume: Int) extends JsonSupport
     
     case class HistoryRequest(limit: Int = 1)
 
-    case class CandleResponse(candles: Array[Candle]) extends JsonSupport {
-        override def toString: String = {
-            val jsArray = (for (c <- candles) yield c.toJson).toVector
-            JsArray(jsArray).compactPrint
-        }
-    }
+    case class CandleResponse(candles: Array[Candle]) extends JsonSupport
 
 
 

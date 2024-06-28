@@ -1,22 +1,20 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "0.1.1-SNAPSHOT"
 
-ThisBuild / scalaVersion := "3.4.2"
+ThisBuild / scalaVersion := "2.13.0"
 
 resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 
-val AkkaVersion = "2.9.3"
-val AkkaHttpVersion = "10.6.3"
+
+val AkkaVersion = "2.5.23"
+val AkkaHttpVersion = "10.1.8"
 
 libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
     "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
-    "io.spray" %% "spray-json" % "1.3.6",
+    "io.spray" %% "spray-json" % "1.3.5", //do not upgrade
     "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
     "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
-    "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % Test,
-
-    "com.typesafe.akka" %% "akka-persistence" % AkkaVersion,
-    "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test
+    "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % Test
 
 )
 

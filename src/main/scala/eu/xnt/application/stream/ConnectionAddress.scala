@@ -3,7 +3,6 @@ package eu.xnt.application.stream
 import java.io.{IOException, InputStream}
 import java.net.{InetSocketAddress, Socket}
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
 
 final case class ConnectionAddress(host: String, port: Int) {
     def getStream: Future[InputStream] = {
@@ -13,8 +12,9 @@ final case class ConnectionAddress(host: String, port: Int) {
             socket.connect(endpoint)
             val in = socket.getInputStream
             Future.successful(in)
-        } catch
+        } catch {
             case ex: IOException =>
                 Future.failed(ex)
+        }
     }
 }

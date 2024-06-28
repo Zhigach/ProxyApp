@@ -7,11 +7,7 @@ object Quote {
     def parse(bytes: ByteBuffer): Quote = {
         val ts = bytes.getLong
         val tickerLength = bytes.getShort
-        val ticker =
-            String(
-                (for (i <- 1 to tickerLength) yield bytes.get).toArray,
-                "US-ASCII"
-            )
+        val ticker = new String((for (i <- 1 to tickerLength) yield bytes.get).toArray, "US-ASCII")
         val price = bytes.getDouble
         val size = bytes.getInt
         new Quote(1, ts, tickerLength, ticker, price, size)
@@ -19,7 +15,8 @@ object Quote {
 }
 
 final case class Quote(len: Short, timestamp: Long, tickerLen: Short, ticker: String, price: Double, size: Int) {
-    override def toString: String =
+    override def toString: String = {
         val time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC"))
-        String(s"[$time]: $ticker P: $price, S: $size")
+        String.format(s"[$time]: $ticker P: $price, S: $size")
+    }
 }

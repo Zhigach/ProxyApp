@@ -2,9 +2,8 @@ package eu.xnt.application.utils
 
 object Math {
     
-    extension (long: Long)
-        def roundBy(to: Long): Long = {
-            (long / to) * to
-        }
+    def roundBy(long: Long, to: Long): Long = {
+        (long / to) * to
+    }
 
 }

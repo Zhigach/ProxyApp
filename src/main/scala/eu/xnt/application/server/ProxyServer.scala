@@ -1,15 +1,14 @@
 package eu.xnt.application.server
 
-import akka.Done
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.{ActorSystem, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.http.scaladsl.server.Directives.*
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse}
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{CompletionStrategy, OverflowStrategy}
+import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy}
 import akka.util.{ByteString, Timeout}
 import eu.xnt.application.model.CandleModels.{Candle, CandleResponse, HistoryRequest}
 import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
@@ -20,7 +19,7 @@ import spray.json.enrichAny
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.concurrent.duration.*
+import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.language.postfixOps
 import scala.util.Success
 
@@ -35,6 +34,7 @@ object ProxyServer {
 
     implicit val system: ActorSystem = ActorSystem("ProxyServer")
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+    implicit val materializer: Materializer = ActorMaterializer()
     implicit val jsonEntityStreamingSupport: JsonEntityStreamingSupport = EntityStreamingSupport.json()
 
 
@@ -48,32 +48,27 @@ object ProxyServer {
 
     private val (sourceActorRef, source) =
         Source.actorRef[Candle](
-            completionMatcher = {
-                case Done =>
-                    CompletionStrategy.immediately
-                },
-            failureMatcher = PartialFunction.empty,
             bufferSize = 100,
             overflowStrategy = OverflowStrategy.dropHead)
           .preMaterialize()
 
     source.runWith(Sink.ignore)
 
-    private val refreshJob = system.scheduler.scheduleWithFixedDelay(
-          initialDelay = {
-              val currentTimeMillis = System.currentTimeMillis()
-              val delayToFirstExecution = currentTimeMillis.roundBy(candleDurationMillis) + candleDurationMillis - currentTimeMillis
-              Duration.create(delayToFirstExecution, TimeUnit.MILLISECONDS)
-          },
-          delay = FiniteDuration.apply(candleDurationMillis, TimeUnit.MILLISECONDS))
-      (() => {
-          implicit val timeout: Timeout = Timeout(10 seconds)
-          val result = repositoryActor ? HistoryRequest()
-          result onComplete {
-              case Success(candles: CandleResponse) =>
-                  for (can <- candles.candles) sourceActorRef ! can
-          }
-      })(system.dispatcher)
+    system.scheduler.schedule(
+        initialDelay = {
+            val currentTimeMillis = System.currentTimeMillis()
+            val delayToFirstExecution = roundBy(currentTimeMillis, candleDurationMillis) + candleDurationMillis - currentTimeMillis
+            Duration.create(delayToFirstExecution, TimeUnit.MILLISECONDS)
+        },
+        interval = FiniteDuration.apply(candleDurationMillis, TimeUnit.MILLISECONDS)
+    ) {
+        implicit val timeout: Timeout = Timeout(10 seconds)
+        val result = repositoryActor ? HistoryRequest()
+        result onComplete {
+            case Success(candles: CandleResponse) =>
+                for (can <- candles.candles) sourceActorRef ! can
+        }
+    }
 
 
     private val routes: Route =
@@ -100,6 +95,6 @@ object ProxyServer {
             )
         }
 
-    private val bindingFuture = Http().newServerAt(serverAddress, bindPort).bind(routes)
+    Http().bindAndHandle(routes, interface = serverAddress, port = bindPort)
 
 }

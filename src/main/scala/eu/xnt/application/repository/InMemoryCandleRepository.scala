@@ -1,13 +1,12 @@
 package eu.xnt.application.repository
 
 import eu.xnt.application.model.CandleModels.Candle
-import eu.xnt.application.model.{CandleModels, Quote}
+import eu.xnt.application.model.Quote
 
-import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 
-class InMemoryCandleRepository(val candleDuration: Long) {
+case class InMemoryCandleRepository(candleDuration: Long) {
 
     private val candleBuffers: ArrayBuffer[CandleBuffer] = ArrayBuffer()
 
@@ -21,18 +20,17 @@ class InMemoryCandleRepository(val candleDuration: Long) {
 
     def addQuote(q: Quote): Unit = {        
         val ticker = q.ticker
-        val quoteTS = LocalDateTime.ofInstant(Instant.ofEpochMilli(q.timestamp), ZoneId.of("UTC"))
         val optBuffer = getBuffer(ticker)
-        optBuffer match
+        optBuffer match {
             case Some(buffer) =>
                 addQuote(q, buffer)
             case None => // если буфера для такого тикера нет, то создаем новый                
                 candleBuffers.addOne(CandleBuffer(ticker, candleDuration))
                 val newBuffer = getBuffer(ticker)
                 addQuote(q, newBuffer.get)
+        }
     }
 
     private def getBuffer(ticker: String): Option[CandleBuffer] =
-        val buffer = candleBuffers.find(b => b.ticker == ticker)        
-        buffer
+        candleBuffers.find(b => b.ticker == ticker)
 }
