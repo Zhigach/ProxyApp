@@ -10,11 +10,28 @@ case class InMemoryCandleRepository(candleDuration: Long) {
 
     private val candleBuffers: ArrayBuffer[CandleBuffer] = ArrayBuffer()
 
+    /**
+     * Get number of stored candles (completed or not) for specified ticker
+     * @param ticker
+     * @return
+     */
+    def bufferSize(ticker: String): Int = {
+        candleBuffers.find(cb => cb.ticker == ticker) match {
+            case Some(buffer) => buffer.size
+            case None => 0
+        }
+    }
+
+    /**
+     * Get completed historical candles from present moment with specified depth
+     * @param depth depth of history in minutes
+     * @return flat array of historical candles for all tickers in storage
+     */
     def getHistoricalCandles(depth: Int = 1): Array[Candle] = {
         candleBuffers.flatMap(cb => cb.getHistoricalCandles(depth)).toArray
     }
 
-    def addQuote(quote: Quote, buffer: CandleBuffer): Unit = {
+    private def addQuote(quote: Quote, buffer: CandleBuffer): Unit = {
         buffer.addQuote(quote)
     }
 
@@ -24,7 +41,7 @@ case class InMemoryCandleRepository(candleDuration: Long) {
         optBuffer match {
             case Some(buffer) =>
                 addQuote(q, buffer)
-            case None => // если буфера для такого тикера нет, то создаем новый                
+            case None => // если буфера для такого тикера нет, то создаем новый
                 candleBuffers.addOne(CandleBuffer(ticker, candleDuration))
                 val newBuffer = getBuffer(ticker)
                 addQuote(q, newBuffer.get)

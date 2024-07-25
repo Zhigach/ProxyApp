@@ -8,6 +8,8 @@ import scala.collection.mutable
 
 case class CandleBuffer(ticker: String, duration: Long) extends Iterable[Candle] {
 
+    //override def size: Int = buffer.size
+
     val buffer: mutable.Stack[Candle] = mutable.Stack()
     /**
      * 0) если свечек для инструмента  нет, то создаём первую свечу

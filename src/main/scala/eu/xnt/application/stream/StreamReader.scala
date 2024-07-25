@@ -1,9 +1,9 @@
 package eu.xnt.application.stream
 
-import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Props, Status, SupervisorStrategy}
+import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Status, SupervisorStrategy}
 import akka.pattern.pipe
 import eu.xnt.application.model.Quote
-import eu.xnt.application.stream.StreamReader.{Connect, ReadStream, StreamData}
+import eu.xnt.application.stream.StreamReader.{Connect, ReadStream, StreamData, reconnectPeriod}
 
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -14,8 +14,6 @@ import scala.language.postfixOps
 class StreamReader(connection: ConnectionAddress, quoteReceiver: ActorRef) extends Actor with ActorLogging {
     
     implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
-
-    private val reconnectPeriod = 5 seconds
 
     override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
         case _ : RuntimeException => SupervisorStrategy.Restart
@@ -29,6 +27,7 @@ class StreamReader(connection: ConnectionAddress, quoteReceiver: ActorRef) exten
 
     private def disconnected(): Receive = {
         case Connect(connection) =>
+            log.info("Connecting to {}: {}", connection.host, connection.port)
             connect().pipeTo(self)
         case Status.Failure(exception) =>
             log.info(s"${exception.getMessage}")
@@ -87,4 +86,6 @@ object StreamReader {
     case class Connect(connection: ConnectionAddress)
     case object ReadStream
     case class StreamData(messageBuffer: ByteBuffer)
+
+    val reconnectPeriod: FiniteDuration = 5 seconds
 }
