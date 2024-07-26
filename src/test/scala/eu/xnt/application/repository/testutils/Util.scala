@@ -10,7 +10,7 @@ object Util {
     def randomQuote(timestamp: Long, ticker: String = "TEST", price: Int = 1): Quote = {
         Quote(
             timestamp = timestamp,
-            tickerLen = 1,
+            tickerLen = ticker.length.toShort,
             ticker = ticker,
             price = price,
             size = 1
@@ -20,7 +20,7 @@ object Util {
     def encodeQuote(q: Quote): Array[Byte] = {
         val buffer = ByteBuffer.allocate(q.len + 2)
           .order(java.nio.ByteOrder.BIG_ENDIAN)
-          //.putShort(q.len)
+          .putShort(q.len)
           .putLong(q.timestamp)
           .putShort(q.tickerLen)
           .put(q.ticker.getBytes(StandardCharsets.US_ASCII))
