@@ -5,7 +5,9 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 
 class CandleBufferTest extends AnyWordSpecLike {
+
     private val candleBuffer = CandleBuffer("TEST.TEST", 60000)
+
     private val ts = (System.currentTimeMillis() / 60000 - 2) * 60000 + 1 // make two minutes
 
     "CandleBuffer" must {
@@ -33,8 +35,6 @@ class CandleBufferTest extends AnyWordSpecLike {
             assert(candleBuffer.getHistoricalCandles(3).length == 2)
         }
     }
-
-
 
 
 }

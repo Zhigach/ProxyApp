@@ -7,6 +7,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 class InMemoryCandleRepositoryTest extends AnyWordSpecLike {
 
     private val inMemoryCandleRepository = InMemoryCandleRepository(60000)
+
     private val ts = (System.currentTimeMillis() / 60000 - 2) * 60000 + 1 // make a previous minute ts
 
     "InMemoryCandleRepository" must {

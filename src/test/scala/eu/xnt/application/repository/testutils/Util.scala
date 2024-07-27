@@ -7,7 +7,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 object Util {
-    def randomQuote(timestamp: Long, ticker: String = "TEST", price: Int = 1): Quote = {
+    def randomQuote(timestamp: Long = System.currentTimeMillis(), ticker: String = "TEST", price: Int = 1): Quote = {
         Quote(
             timestamp = timestamp,
             tickerLen = ticker.length.toShort,
@@ -15,6 +15,10 @@ object Util {
             price = price,
             size = 1
         )
+    }
+
+    def oldQuote(ageInMinutes: Int, ticker: String = "TEST"): Quote = {
+        randomQuote((System.currentTimeMillis() / 60000 - ageInMinutes) * 60000 + 1, ticker)
     }
 
     def encodeQuote(q: Quote): Array[Byte] = {

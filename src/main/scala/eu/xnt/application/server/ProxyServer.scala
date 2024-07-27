@@ -2,8 +2,7 @@ package eu.xnt.application.server
 
 import akka.actor.{ActorSystem, Props}
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
@@ -35,7 +34,6 @@ object ProxyServer {
     implicit val system: ActorSystem = ActorSystem("ProxyServer")
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
     implicit val materializer: Materializer = ActorMaterializer()
-    implicit val jsonEntityStreamingSupport: JsonEntityStreamingSupport = EntityStreamingSupport.json()
 
 
     private val repository = InMemoryCandleRepository(candleDurationMillis)
@@ -48,8 +46,8 @@ object ProxyServer {
 
     private val (sourceActorRef, source) =
         Source.actorRef[Candle](
-            bufferSize = 100,
-            overflowStrategy = OverflowStrategy.dropHead)
+              bufferSize = 100,
+              overflowStrategy = OverflowStrategy.dropHead)
           .preMaterialize()
 
     source.runWith(Sink.ignore)
@@ -74,10 +72,7 @@ object ProxyServer {
     private val routes: Route =
         get {
             concat(
-                path("health") {
-                    complete("Ok!")
-                },
-                path("candles") {
+                path("") {
                     implicit val timeout: Timeout = Timeout(10 seconds)
                     val candleCacheFuture: Future[CandleResponse] = (repositoryActor ? HistoryRequest(initialHistoryDepth))
                       .asInstanceOf[Future[CandleResponse]]

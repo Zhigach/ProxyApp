@@ -10,10 +10,7 @@ import akka.util.ByteString
 import eu.xnt.application.model.Quote
 import eu.xnt.application.repository.testutils.Util
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-
-import java.nio.{ByteBuffer, ByteOrder}
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -21,7 +18,6 @@ import scala.language.postfixOps
 
 class StreamReaderTest extends TestKit(ActorSystem("StreamReaderTest"))
   with AnyWordSpecLike
-  with Matchers
   with BeforeAndAfterAll {
 
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -41,30 +37,32 @@ class StreamReaderTest extends TestKit(ActorSystem("StreamReaderTest"))
           connection => connection.handleWith(quoteFlow)
       }
 
+    val quoteReceiverMock = TestProbe()
+    val logProbe = TestProbe()
+    system.eventStream.subscribe(logProbe.ref, classOf[Logging.LogEvent])
+
+    val streamReader = system.actorOf(Props(new StreamReader(connection, quoteReceiverMock.ref)), "StreamReader")
 
     "StreamReader" must {
-
-        val quoteReceiverMock = TestProbe()
-        val logProbe = TestProbe()
-        system.eventStream.subscribe(logProbe.ref, classOf[Logging.LogEvent])
-
-        val streamReader = system.actorOf(Props(new StreamReader(connection, quoteReceiverMock.ref)), "StreamReader")
 
         "connects and starts receiving quotes" in {
             quoteReceiverMock.expectMsgClass(10 seconds, classOf[Quote])
         }
+
         "stream fails" in {
             logProbe.fishForMessage(10 seconds) {
                 case Logging.Error(_, _, _, msg: String) if msg.contains("Stream failed") => true
                 case _ => false
             }
         }
+
         "reader reconnects" in {
             logProbe.fishForMessage(10 seconds) {
                 case Logging.Info(_, _, msg: String) if msg.contains("Stream connected") => true
                 case _ => false
             }
         }
+
     }
 
 
