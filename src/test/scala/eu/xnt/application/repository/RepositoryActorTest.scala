@@ -2,12 +2,11 @@ package eu.xnt.application.repository
 
 import akka.actor.{ActorSystem, Props}
 import akka.pattern.ask
-import akka.testkit.{ImplicitSender, TestKit}
+import akka.testkit.TestKit
 import eu.xnt.application.model.CandleModels.{CandleResponse, HistoryRequest}
 import eu.xnt.application.repository.testutils.Util.randomQuote
 import org.scalatest.BeforeAndAfterAll
 import akka.util.Timeout
-import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.ExecutionContextExecutor
@@ -15,11 +14,8 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class RepositoryActorTest
-    extends TestKit(ActorSystem("RepositoryActorTest"))
-    with ImplicitSender
+class RepositoryActorTest extends TestKit(ActorSystem("RepositoryActorTest"))
     with AnyWordSpecLike
-    with Matchers
     with BeforeAndAfterAll {
 
     implicit val ec: ExecutionContextExecutor = system.dispatcher
