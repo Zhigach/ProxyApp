@@ -12,6 +12,8 @@ import akka.util.ByteString
 import eu.xnt.application.repository.testutils.Util
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpecLike
+import spray.json.DefaultJsonProtocol.StringJsonFormat
+import spray.json.JsonParser
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
@@ -72,13 +74,9 @@ class ProxyServerTest extends TestKit(ActorSystem("ProxyServerTest"))
             reqFuture.onComplete {
                 case Success(response) =>
                     response.entity.dataBytes.runForeach { chunk: ByteString =>
-                        val tickerRegexp = """"ticker":"(.*?)"""".r
-                        val ticker = tickerRegexp.findFirstMatchIn(chunk.utf8String)
-                        ticker match {
-                            case Some(tickerName) => logProbe.send(logProbe.ref, tickerName.group(1))
-                            case None => fail
-                        }
-
+                        val json = JsonParser(chunk.utf8String)
+                        val ticker = json.asJsObject.fields("ticker").convertTo[String]
+                        logProbe.send(logProbe.ref, ticker)
                     }
                 case Failure(error) =>
                     println(s"Request failed: $error")
