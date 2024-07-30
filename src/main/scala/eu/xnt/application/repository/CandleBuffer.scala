@@ -6,15 +6,17 @@ import eu.xnt.application.utils.Math._
 
 import scala.collection.mutable
 
+/**
+ * Storage for a single ticker candles
+ * @param ticker unique name of an instrument
+ * @param duration single Candle duration
+ */
 case class CandleBuffer(ticker: String, duration: Long) extends Iterable[Candle] {
 
-    //override def size: Int = buffer.size
-
     val buffer: mutable.Stack[Candle] = mutable.Stack()
+
     /**
-     * 0) если свечек для инструмента  нет, то создаём первую свечу
-     * 1) Если таймстемп котировки позднее (таймстемп + длительности последней свечки), то создаем новую
-     * 2) если таймстемп попадает в последнюю свечу, то обновляем её и подкладываем на место последней свечи в хранилище
+     * Add single quote to the storage
      */
     def addQuote(quote: Quote): Unit = {
         if (buffer.isEmpty) {
@@ -30,11 +32,16 @@ case class CandleBuffer(ticker: String, duration: Long) extends Iterable[Candle]
         }
     }
 
+    /**
+     * Get candles that are older than present time by specified depth
+     * @param depth maximum age of a quote in minutes
+     * @return
+     */
     def getHistoricalCandles(depth: Int): Array[Candle] = {
         val currentTimeMillisRounded = roundBy(System.currentTimeMillis(), duration)
         val lowerLimitMillis = currentTimeMillisRounded - depth * duration
-        val result = buffer.filter(c => (c.timestamp >= lowerLimitMillis) &&
-                            c.timestamp < currentTimeMillisRounded)
+        val result = buffer
+          .filter(c => (c.timestamp >= lowerLimitMillis) && c.timestamp < currentTimeMillisRounded)
           .toArray
         result
     }

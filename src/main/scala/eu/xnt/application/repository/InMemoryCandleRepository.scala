@@ -6,14 +6,17 @@ import eu.xnt.application.model.Quote
 import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 
+/**
+ * Storage for candles. Can hold candle for numerous instruments
+ * @param candleDuration candle timeframe duration
+ */
 case class InMemoryCandleRepository(candleDuration: Long) {
 
     private val candleBuffers: ArrayBuffer[CandleBuffer] = ArrayBuffer()
 
     /**
      * Get number of stored candles (completed or not) for specified ticker
-     * @param ticker
-     * @return
+     * @param ticker name of an instrument
      */
     def bufferSize(ticker: String): Int = {
         candleBuffers.find(cb => cb.ticker == ticker) match {
@@ -25,7 +28,7 @@ case class InMemoryCandleRepository(candleDuration: Long) {
     /**
      * Get completed historical candles from present moment with specified depth
      * @param depth depth of history in minutes
-     * @return flat array of historical candles for all tickers in storage
+     * @return historical candles which are not older that specified depth in minutes for all tickers in storage
      */
     def getHistoricalCandles(depth: Int = 1): Array[Candle] = {
         candleBuffers.flatMap(cb => cb.getHistoricalCandles(depth)).toArray
@@ -35,6 +38,9 @@ case class InMemoryCandleRepository(candleDuration: Long) {
         buffer.addQuote(quote)
     }
 
+    /**
+     * Add quote to the storage
+     */
     def addQuote(q: Quote): Unit = {        
         val ticker = q.ticker
         val optBuffer = getBuffer(ticker)

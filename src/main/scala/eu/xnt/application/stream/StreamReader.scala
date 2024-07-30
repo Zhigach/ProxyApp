@@ -49,6 +49,9 @@ class StreamReader(connection: ConnectionAddress, quoteReceiver: ActorRef) exten
             self ! ReadStream
     }
 
+
+
+
     private def readStream(inputStream: InputStream): Future[StreamData] = {
         try {
             val msgLength: Short = ByteBuffer.wrap(inputStream.readNBytes(2)).getShort
@@ -60,7 +63,7 @@ class StreamReader(connection: ConnectionAddress, quoteReceiver: ActorRef) exten
         }
     }
     
-    def connect(): Future[InputStream] = {
+    private def connect(): Future[InputStream] = {
         connection.getStream.map {
             inputStream =>
                 log.info(s"Stream connected at ${connection.host}: ${connection.port}")

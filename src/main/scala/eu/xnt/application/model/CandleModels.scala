@@ -16,7 +16,12 @@ object CandleModels {
     case class CandleResponse(candles: Array[Candle]) extends JsonSupport
 
 
-
+    /**
+     * Adds quote to an existing candle
+     * @param quote quote to add
+     * @param candle candle to update
+     * @return updated Candle
+     */
     def updateCandle(quote: Quote, candle: Candle): Candle = {
         val price = quote.price
         val h = math.max(candle.high, price)
@@ -25,6 +30,10 @@ object CandleModels {
         candle.copy(high = h, low = l, volume = vol, close=quote.price)
     }
 
+    /**
+     * Create new candle from a quote
+     * @return
+     */
     def newCandleFromQuote(quote: Quote): Candle = {
         Candle(
             ticker = quote.ticker,
