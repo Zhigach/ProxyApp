@@ -3,10 +3,10 @@ package eu.xnt.application.repository
 import akka.actor.{ActorSystem, Props}
 import akka.pattern.ask
 import akka.testkit.TestKit
-import eu.xnt.application.model.CandleModels.{CandleResponse, HistoryRequest}
 import eu.xnt.application.repository.testutils.Util.randomQuote
 import org.scalatest.BeforeAndAfterAll
 import akka.util.Timeout
+import eu.xnt.application.repository.RepositoryActor.{CandleHistoryRequest, CandleHistory}
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.ExecutionContextExecutor
@@ -20,8 +20,8 @@ class RepositoryActorTest extends TestKit(ActorSystem("RepositoryActorTest"))
 
     implicit val ec: ExecutionContextExecutor = system.dispatcher
 
-    private val inMemoryCandleRepository = InMemoryCandleRepository(60000)
-    private val repositoryActor = ActorSystem()
+    private val inMemoryCandleRepository = new InMemoryCandleRepository(60000)
+    private val repositoryActor = system
       .actorOf(Props.create(classOf[RepositoryActor], inMemoryCandleRepository), "TestRepositoryActor")
 
     private val ts = (System.currentTimeMillis() / 60000 - 2) * 60000 + 1
@@ -37,10 +37,10 @@ class RepositoryActorTest extends TestKit(ActorSystem("RepositoryActorTest"))
 
         "return historical quotes when requested" in {
             implicit val timeout: Timeout = Timeout(100 millis)
-            repositoryActor ? HistoryRequest(2) onComplete {
+            repositoryActor ? CandleHistoryRequest(2) onComplete {
                 case Success(candles) =>
                     candles match {
-                        case CandleResponse(candles) =>
+                        case CandleHistory(candles) =>
                             assert(candles.length == 1)
                     }
                 case Failure(_) => fail("Response is not received")
@@ -55,10 +55,10 @@ class RepositoryActorTest extends TestKit(ActorSystem("RepositoryActorTest"))
 
         "return all historical quotes" in {
             implicit val timeout: Timeout = Timeout(100 millis)
-            repositoryActor ? HistoryRequest(2) onComplete {
+            repositoryActor ? CandleHistoryRequest(2) onComplete {
                 case Success(candles) =>
                     candles match {
-                        case CandleResponse(candles) =>
+                        case CandleHistory(candles) =>
                             assert(candles.length == 2)
                     }
                 case Failure(_) => fail("Response is not received")
@@ -67,10 +67,10 @@ class RepositoryActorTest extends TestKit(ActorSystem("RepositoryActorTest"))
 
         "return historical quotes only with requested depth" in {
             implicit val timeout: Timeout = Timeout(100 millis)
-            repositoryActor ? HistoryRequest(1) onComplete {
+            repositoryActor ? CandleHistoryRequest(1) onComplete {
                 case Success(candles) =>
                     candles match {
-                        case CandleResponse(candles) =>
+                        case CandleHistory(candles) =>
                             assert(candles.length == 1)
                     }
                 case Failure(_) => fail("Response is not received")

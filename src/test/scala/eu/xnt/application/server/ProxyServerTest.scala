@@ -25,7 +25,7 @@ class ProxyServerTest extends TestKit(ActorSystem("ProxyServerTest"))
   with AnyWordSpecLike
   with BeforeAndAfterAll {
 
-    private val proxyServer = ProxyServer
+    private val proxyServer = new ProxyServer()
 
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
     implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -66,7 +66,6 @@ class ProxyServerTest extends TestKit(ActorSystem("ProxyServerTest"))
         "receive quotes" in {
             expectNoMessage(10 seconds)
         }
-
 
         "provide historical data to a newly connected client" in {
 

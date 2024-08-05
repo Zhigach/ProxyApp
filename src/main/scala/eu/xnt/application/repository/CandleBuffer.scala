@@ -1,6 +1,6 @@
 package eu.xnt.application.repository
 
-import eu.xnt.application.model.CandleModels.{Candle, CandleResponse}
+import eu.xnt.application.model.CandleModels.Candle
 import eu.xnt.application.model.{CandleModels, Quote}
 import eu.xnt.application.utils.Math._
 
@@ -20,15 +20,15 @@ case class CandleBuffer(ticker: String, duration: Long) extends Iterable[Candle]
      */
     def addQuote(quote: Quote): Unit = {
         if (buffer.isEmpty) {
-            buffer.push(CandleModels.newCandleFromQuote(quote)) // 0
+            buffer.push(CandleModels.newCandleFromQuote(quote))
         } else {
             val lastCandle = buffer.head
             val quoteTS: Long = quote.timestamp
             val candleEndTS: Long = lastCandle.timestamp + lastCandle.duration
-            if (quoteTS.compareTo(candleEndTS) > 0) {
-              buffer.push(CandleModels.newCandleFromQuote(quote)) // 1
-            } else
-                buffer.push(CandleModels.updateCandle(quote, buffer.pop())) // 2
+            if (quoteTS.compareTo(candleEndTS) > 0)
+                buffer.push(CandleModels.newCandleFromQuote(quote))
+            else
+                buffer.push(CandleModels.updateCandle(quote, buffer.pop()))
         }
     }
 
@@ -37,17 +37,17 @@ case class CandleBuffer(ticker: String, duration: Long) extends Iterable[Candle]
      * @param depth maximum age of a quote in minutes
      * @return
      */
-    def getHistoricalCandles(depth: Int): Array[Candle] = {
+    def getHistoricalCandles(depth: Int): Vector[Candle] = {
         val currentTimeMillisRounded = roundBy(System.currentTimeMillis(), duration)
         val lowerLimitMillis = currentTimeMillisRounded - depth * duration
         val result = buffer
           .filter(c => (c.timestamp >= lowerLimitMillis) && c.timestamp < currentTimeMillisRounded)
-          .toArray
+          .toVector
         result
     }
 
     override def toString: String =        
-        CandleResponse(buffer.toArray).toString
+        buffer.toVector.toString
 
     override def iterator: Iterator[Candle] = buffer.iterator
 }

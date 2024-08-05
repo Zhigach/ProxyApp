@@ -4,17 +4,12 @@ object CandleModels {
 
     case class Candle(ticker: String,
                       timestamp: Long,
-                      duration: Long = 60000,
+                      duration: Int = 60000,
                       open: Double,
                       high: Double,
                       low: Double,
                       close: Double,
                       volume: Int) extends JsonSupport
-    
-    case class HistoryRequest(limit: Int = 1)
-
-    case class CandleResponse(candles: Array[Candle]) extends JsonSupport
-
 
     /**
      * Adds quote to an existing candle
@@ -34,10 +29,10 @@ object CandleModels {
      * Create new candle from a quote
      * @return
      */
-    def newCandleFromQuote(quote: Quote): Candle = {
+    def newCandleFromQuote(quote: Quote, duration: Int = 60000): Candle = {
         Candle(
             ticker = quote.ticker,
-            timestamp = (quote.timestamp / 60000) * 60000,
+            timestamp = (quote.timestamp / duration) * duration,
             open = quote.price,
             high = quote.price,
             low = quote.price,

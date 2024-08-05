@@ -1,19 +1,22 @@
 package eu.xnt.application.server
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ActorSystem, Scheduler}
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.pattern.ask
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy}
 import akka.util.{ByteString, Timeout}
-import eu.xnt.application.model.CandleModels.{Candle, CandleResponse, HistoryRequest}
+import eu.xnt.application.model.CandleModels.Candle
 import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
-import eu.xnt.application.stream.{ConnectionAddress, StreamReader}
+import eu.xnt.application.stream.{Connection, StreamReader}
 import eu.xnt.application.utils.Math._
 import eu.xnt.application.model.JsonSupport.CandleJsonFormat
+import eu.xnt.application.repository.RepositoryActor.{CandleHistory, CandleHistoryRequest}
 import spray.json.enrichAny
 
 import java.util.concurrent.TimeUnit
@@ -23,26 +26,27 @@ import scala.language.postfixOps
 import scala.util.Success
 
 
-object ProxyServer {
+class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior[CandleHistory] {
 
-    private val (endpoint, port) = ("localhost", 5555) // TODO make configuration file
+    private val (endpoint, port) = ("localhost", 5555)
     private val (serverAddress, bindPort) = ("localhost", 8080)
     private val defaultCandleDurationMillis = 60000
     private val initialHistoryDepth = 10
 
 
     implicit val system: ActorSystem = ActorSystem("ProxyServer")
-    implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+    implicit val executionContext: ExecutionContextExecutor = system.dispatcher //FIXME глобальный и акторный ec - зло
     implicit val materializer: Materializer = ActorMaterializer()
 
 
-    private val repository = InMemoryCandleRepository(defaultCandleDurationMillis)
+    private val repositoryActor =
+        context.spawn(RepositoryActor(new InMemoryCandleRepository(defaultCandleDurationMillis)), "RepositoryActor")
 
-    private val repositoryActor = system.actorOf(Props.create(classOf[RepositoryActor], repository), "RepositoryActor")
+    private val streamReaderActor = {
+        context.spawn(StreamReader(Connection(endpoint, port), repositoryActor), "StreamReader")
+    }
 
-    private val connection: ConnectionAddress = ConnectionAddress(endpoint, port)
-
-    private val streamReaderActor = system.actorOf(Props.create(classOf[StreamReader], connection, repositoryActor), "StreamReaderActor")
+    override def onMessage(msg: CandleHistory): Behavior[CandleHistory] = Behaviors.same
 
     private val (sourceActorRef, source) =
         Source.actorRef[Candle](
@@ -57,11 +61,13 @@ object ProxyServer {
      */
     system.scheduler.schedule(
         initialDelay = millisToNewTimeframe(),
-        interval = FiniteDuration.apply(defaultCandleDurationMillis, TimeUnit.MILLISECONDS)
+        interval = defaultCandleDurationMillis millis
     ) {
-        val result = (repositoryActor ? HistoryRequest())(Timeout(10 seconds))
+        implicit val scheduler: Scheduler = system.scheduler
+        implicit val timeout: Timeout = Timeout(10 seconds)
+        val result = repositoryActor.ask(replyTo => CandleHistoryRequest(1, replyTo))
         result onComplete {
-            case Success(candles: CandleResponse) =>
+            case Success(candles: CandleHistory) =>
                 for (can <- candles.candles) sourceActorRef ! can
         }
     }
@@ -72,25 +78,36 @@ object ProxyServer {
      */
     private val routes: Route =
         get {
-            concat(
-                path("") {
-                    implicit val timeout: Timeout = Timeout(10 seconds)
-                    val candleCacheFuture: Future[CandleResponse] = (repositoryActor ? HistoryRequest(initialHistoryDepth))
-                      .asInstanceOf[Future[CandleResponse]]
-                    onComplete(candleCacheFuture) {
-                        case Success(candles) =>
-                            complete(
-                                HttpEntity(
-                                    ContentTypes.`application/json`,
-                                    (Source(candles.candles) ++ source)
-                                      .map(can => ByteString(can.toJson.compactPrint + '\n'))
-                                )
+            path("") {
+                implicit val scheduler: Scheduler = system.scheduler
+                implicit val timeout: Timeout = Timeout(10 seconds)
+                val candleCacheFuture: Future[CandleHistory] =
+                    repositoryActor.ask(replyTo => CandleHistoryRequest(initialHistoryDepth, replyTo)) //FIXME replace with ActorContext.ask
+
+                onComplete(candleCacheFuture) {
+                    case Success(candles) =>
+                        complete(
+                            HttpEntity(
+                                ContentTypes.`application/json`,
+                                (Source(candles.candles) ++ source)
+                                  .map(can => ByteString(can.toJson.compactPrint + '\n'))
                             )
-                    }
+                        )
                 }
-            )
+            }
         }
 
     Http().bindAndHandle(routes, interface = serverAddress, port = bindPort)
+
+    streamReaderActor ! StreamReader.Connect(Connection(endpoint, port))
+}
+
+object ProxyServer {
+
+    def apply(): Behavior[CandleHistory] = {
+        Behaviors.setup { context =>
+            new ProxyServer(context)
+        }
+    }
 
 }
