@@ -20,12 +20,19 @@ import eu.xnt.application.model.JsonSupport.CandleJsonFormat
 import eu.xnt.application.repository.RepositoryActor.{CandleHistory, CandleHistoryRequest}
 import spray.json.enrichAny
 
-import java.util.concurrent.TimeUnit
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
 import scala.util.Success
 
+
+object ProxyServer {
+    def apply(): Behavior[CandleHistory] = {
+        Behaviors.setup { context =>
+            new ProxyServer(context)
+        }
+    }
+}
 
 class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior[CandleHistory] with LazyLogging {
 
@@ -39,7 +46,7 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher //FIXME глобальный и акторный ec - зло
     implicit val materializer: Materializer = ActorMaterializer()
 
-    
+
     private val repositoryActor =
         context.spawn(RepositoryActor(new InMemoryCandleRepository(defaultCandleDurationMillis)), "RepositoryActor")
 
@@ -99,15 +106,5 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior
         }
 
     Http().bindAndHandle(routes, interface = serverAddress, port = bindPort)
-
-}
-
-object ProxyServer {
-
-    def apply(): Behavior[CandleHistory] = {
-        Behaviors.setup { context =>
-            new ProxyServer(context)
-        }
-    }
 
 }

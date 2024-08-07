@@ -8,6 +8,22 @@ import eu.xnt.application.model.Quote
 import eu.xnt.application.repository.RepositoryActor.{CandleHistoryRequest, CandleHistory, RepositoryCommand}
 
 
+object RepositoryActor extends LazyLogging {
+
+    sealed trait RepositoryCommand
+    case class AddQuote(q: Quote) extends RepositoryCommand
+    case class CandleHistoryRequest(limit: Int = 1, replyTo: ActorRef[CandleHistory]) extends RepositoryCommand
+    case class CandleHistory(candles: Vector[Candle]) extends RepositoryCommand
+
+
+    def apply(repository: InMemoryCandleRepository): Behavior[RepositoryCommand] = {
+        Behaviors.setup( context => {
+            val repositoryActor = new RepositoryActor(repository, context)
+            repositoryActor
+        })
+    }
+}
+
 class RepositoryActor(repository: InMemoryCandleRepository, context: ActorContext[RepositoryCommand])
   extends AbstractBehavior[RepositoryCommand]
     with LazyLogging {
@@ -31,21 +47,5 @@ class RepositoryActor(repository: InMemoryCandleRepository, context: ActorContex
                 //TODO remove this case. CandleResponse is excessive for the RepositoryCommand trait
                 this
         }
-    }
-}
-
-object RepositoryActor extends LazyLogging {
-
-    sealed trait RepositoryCommand
-    case class AddQuote(q: Quote) extends RepositoryCommand
-    case class CandleHistoryRequest(limit: Int = 1, replyTo: ActorRef[CandleHistory]) extends RepositoryCommand
-    case class CandleHistory(candles: Vector[Candle]) extends RepositoryCommand
-
-
-    def apply(repository: InMemoryCandleRepository): Behavior[RepositoryCommand] = {
-        Behaviors.setup( context => {
-            val repositoryActor = new RepositoryActor(repository, context)
-            repositoryActor
-        })
     }
 }

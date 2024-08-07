@@ -10,10 +10,28 @@ import eu.xnt.application.stream.StreamReader.{Command, ReadStream, StreamData, 
 
 import java.io.InputStream
 import java.nio.ByteBuffer
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
+
+object StreamReader extends LazyLogging {
+
+    sealed trait Command
+    private case class ReadStream(inputSteam: InputStream) extends Command
+    private case class StreamData(messageBuffer: ByteBuffer) extends Command
+    case class WrappedConnectorResponse(status: StreamConnector.ConnectionStatus) extends Command
+
+    val reconnectPeriod: FiniteDuration = 5 seconds
+
+    def apply(connection: Connection, quoteReceiver: ActorRef[RepositoryCommand]): Behavior[Command] = {
+        Behaviors.setup { context =>
+            val streamConnector = context.spawn(StreamConnector(connection), "StreamConnector")
+            val streamReader = new StreamReader(streamConnector, quoteReceiver, context)
+            streamReader
+        }
+    }
+}
 
 class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteReceiver: ActorRef[RepositoryCommand], context: ActorContext[Command])
   extends AbstractBehavior[Command] with LazyLogging {
@@ -30,7 +48,7 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteRece
     override def onMessage(msg: Command): Behavior[Command] = {
         msg match {
             case StreamReader.ReadStream(inputSteam) =>
-                logger.debug("ReadStream while connected")
+                logger.trace("ReadStream while connected")
                 context.pipeToSelf(readStream(inputSteam)) {
                     case Failure(exception) =>
                         logger.error("Error during reading stream: {}", exception)
@@ -41,12 +59,12 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteRece
                 context.self ! StreamReader.ReadStream(inputSteam)
                 Behaviors.same
             case StreamReader.StreamData(messageBuffer) =>
-                logger.debug("StreamData received")
+                logger.trace("StreamData received")
                 val quote = Quote.parse(messageBuffer)
                 quoteReceiver ! AddQuote(quote)
                 Behaviors.same
             case StreamReader.WrappedConnectorResponse(status) =>
-                logger.debug("ConnectionStatus message received")
+                logger.trace("ConnectionStatus message received")
                 status match {
                     case StreamConnector.Connected(inputStream) =>
                         context.self ! StreamReader.ReadStream(inputStream)
@@ -83,25 +101,5 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteRece
     Thread.sleep(1000)
     logger.debug("I'am {}", context.self)
     streamConnector ! StreamConnector.Connect(context.self)
-    //streamConnector ! StreamConnector.Connect(context.self)
     logger.debug("After message is sent")
-}
-
-object StreamReader extends LazyLogging {
-
-    sealed trait Command
-    private case class ReadStream(inputSteam: InputStream) extends Command
-    private case class StreamData(messageBuffer: ByteBuffer) extends Command
-    case class WrappedConnectorResponse(status: StreamConnector.ConnectionStatus) extends Command
-
-    val reconnectPeriod: FiniteDuration = 5 seconds
-
-    def apply(connection: Connection, quoteReceiver: ActorRef[RepositoryCommand]): Behavior[Command] = {
-         Behaviors.setup { context =>
-             val streamConnector = context.spawn(StreamConnector(connection), "StreamConnector")
-             val streamReader = new StreamReader(streamConnector, quoteReceiver, context)
-             streamReader
-         }
-    }
-
 }

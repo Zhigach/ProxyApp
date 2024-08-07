@@ -9,6 +9,24 @@ import java.io.{IOException, InputStream}
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
+
+object StreamConnector extends LazyLogging {
+
+    sealed trait Command
+    case class Connect(replyTo: ActorRef[StreamReader.Command]) extends Command
+
+    sealed trait ConnectionStatus
+    case class Connected(inputStream: InputStream) extends ConnectionStatus
+    case class Failed(exception: Throwable) extends ConnectionStatus
+
+
+    def apply(connection: Connection): Behavior[Command] = {
+        Behaviors.setup { context =>
+            new StreamConnector(connection, context)
+        }
+    }
+}
+
 class StreamConnector(val connection: Connection, context: ActorContext[Command]) extends AbstractBehavior[Command] with LazyLogging {
 
 
@@ -27,7 +45,7 @@ class StreamConnector(val connection: Connection, context: ActorContext[Command]
                     }
                 }
 
-                logger.debug("Connect message received")
+                logger.trace("Connect message received")
                 connect() onComplete {
                     case Failure(exception) =>
                         logger.error(s"Exception occurred connecting ${connection.host}: ${connection.port}", exception)
@@ -44,24 +62,4 @@ class StreamConnector(val connection: Connection, context: ActorContext[Command]
                 Behaviors.same
         }
     }
-}
-
-object StreamConnector extends LazyLogging {
-
-    sealed trait Command
-    case class Connect(replyTo: ActorRef[StreamReader.Command]) extends Command
-
-    sealed trait ConnectionStatus
-    case class Connected(inputStream: InputStream) extends ConnectionStatus
-    case class Failed(exception: Throwable) extends ConnectionStatus
-
-
-    def apply(connection: Connection): Behavior[Command] = {
-        Behaviors.setup { context =>
-            new StreamConnector(connection, context)
-        }
-    }
-
-
-
 }
