@@ -6,7 +6,7 @@ import akka.testkit.TestKit
 import eu.xnt.application.repository.testutils.Util.randomQuote
 import org.scalatest.BeforeAndAfterAll
 import akka.util.Timeout
-import eu.xnt.application.repository.RepositoryActor.{CandleHistoryRequest, CandleHistory}
+import eu.xnt.application.repository.RepositoryActor.CandleHistoryRequest
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.ExecutionContextExecutor
@@ -37,7 +37,7 @@ class RepositoryActorTest extends TestKit(ActorSystem("RepositoryActorTest"))
 
         "return historical quotes when requested" in {
             implicit val timeout: Timeout = Timeout(100 millis)
-            repositoryActor ? CandleHistoryRequest(2) onComplete {
+            repositoryActor ? CandleHistoryRequest(testActor, 2) onComplete {
                 case Success(candles) =>
                     candles match {
                         case CandleHistory(candles) =>

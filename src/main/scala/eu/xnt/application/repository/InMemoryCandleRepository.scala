@@ -48,7 +48,7 @@ class InMemoryCandleRepository(candleDuration: Long) {
             case Some(buffer) =>
                 addQuote(q, buffer)
             case None => // если буфера для такого тикера нет, то создаем новый
-                candleBuffers.addOne(CandleBuffer(ticker, candleDuration))
+                candleBuffers.addOne(new CandleBuffer(ticker, candleDuration))
                 val newBuffer = getBuffer(ticker)
                 addQuote(q, newBuffer.get)
         }

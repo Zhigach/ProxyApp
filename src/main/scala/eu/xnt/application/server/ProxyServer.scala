@@ -3,7 +3,7 @@ package eu.xnt.application.server
 import akka.actor.{ActorSystem, Scheduler}
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives._
@@ -24,7 +24,7 @@ import spray.json.enrichAny
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 
 object ProxyServer {
@@ -83,6 +83,8 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
         result onComplete {
             case Success(candles: CandleHistory) =>
                 for (can <- candles.candles) sourceActorRef ! can
+            case Failure(_) =>
+                logger.error("Failed to retrieve Historical Candles")
         }
     }
 
@@ -98,19 +100,18 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
 
                 val candleCacheFuture: Future[CandleHistory] =
                     repositoryActor.ask(replyTo => CandleHistoryRequest(initialHistoryDepth, replyTo))
-
-                onComplete(candleCacheFuture) {
-                    case Success(candles) =>
-                        complete(
-                            HttpEntity(
-                                ContentTypes.`application/json`,
-                                (Source(candles.candles) ++ source)
-                                  .map(can => ByteString(can.toJson.compactPrint + '\n'))
-                            )
+                onSuccess(candleCacheFuture) { candles =>
+                    complete(
+                        HttpEntity(
+                            ContentTypes.`application/json`,
+                            (Source(candles.candles) ++ source)
+                              .map(can => ByteString(can.toJson.compactPrint + '\n'))
                         )
+                    )
                 }
             }
         }
+
 
     Http().bindAndHandle(routes, interface = serverAddress, port = bindPort)
 

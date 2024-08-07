@@ -11,7 +11,7 @@ import scala.collection.mutable
  * @param ticker unique name of an instrument
  * @param duration single Candle duration
  */
-case class CandleBuffer(ticker: String, duration: Long) extends Iterable[Candle] {
+class CandleBuffer(val ticker: String, val duration: Long) extends Iterable[Candle] {
 
     val buffer: mutable.Stack[Candle] = mutable.Stack()
 

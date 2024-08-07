@@ -2,14 +2,14 @@ package eu.xnt.application.model
 
 object CandleModels {
 
-    case class Candle(ticker: String,
+    final case class Candle(ticker: String,
                       timestamp: Long,
                       duration: Int = 60000,
                       open: Double,
                       high: Double,
                       low: Double,
                       close: Double,
-                      volume: Int) extends JsonSupport
+                      volume: Int) extends JsonSupport //TODO это что ли "кейс класс обычно не наследуют от json трейтов"
 
     /**
      * Adds quote to an existing candle
