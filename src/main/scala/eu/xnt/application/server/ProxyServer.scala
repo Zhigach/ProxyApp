@@ -83,8 +83,8 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
         result onComplete {
             case Success(candles: CandleHistory) =>
                 for (can <- candles.candles) sourceActorRef ! can
-            case Failure(_) =>
-                logger.error("Failed to retrieve Historical Candles")
+            case Failure(exception) =>
+                logger.error("Failed to retrieve Historical Candles", exception)
         }
     }
 
@@ -106,6 +106,7 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
                             ContentTypes.`application/json`,
                             (Source(candles.candles) ++ source)
                               .map(can => ByteString(can.toJson.compactPrint + '\n'))
+                              //.map(can => ByteString(can.jsonFormat2() + '\n'))
                         )
                     )
                 }

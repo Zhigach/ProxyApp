@@ -1,10 +1,10 @@
 package eu.xnt.application.repository
 
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import com.typesafe.scalalogging.LazyLogging
 import eu.xnt.application.model.Quote
-import eu.xnt.application.repository.RepositoryActor.{CandleHistoryRequest, RepositoryCommand}
+import eu.xnt.application.repository.RepositoryActor.RepositoryCommand
 import eu.xnt.application.server.ProxyServer.CandleHistory
 
 
@@ -35,7 +35,7 @@ class RepositoryActor(repository: InMemoryCandleRepository, context: ActorContex
                 logger.debug("Quote received: {}", q)
                 addQuote(q)
                 Behaviors.same
-            case CandleHistoryRequest(limit, replyTo) =>
+            case RepositoryActor.CandleHistoryRequest(limit, replyTo) =>
                 val candles = repository.getHistoricalCandles(limit)
                 replyTo ! CandleHistory(candles)
                 Behaviors.same

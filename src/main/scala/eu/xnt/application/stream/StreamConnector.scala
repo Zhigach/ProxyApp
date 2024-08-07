@@ -6,7 +6,7 @@ import com.typesafe.scalalogging.LazyLogging
 import eu.xnt.application.stream.StreamConnector.{Command, Connect, Connected, Failed}
 
 import java.io.{IOException, InputStream}
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
 
@@ -30,7 +30,7 @@ object StreamConnector extends LazyLogging {
 class StreamConnector(val connection: Connection, context: ActorContext[Command]) extends LazyLogging {
 
     def basicBehavior(): Behavior[Command] = {
-        implicit val ec = context.executionContext
+        implicit val ec: ExecutionContextExecutor = context.executionContext
         Behaviors.receiveMessage {
             case Connect(replyTo) =>
 
