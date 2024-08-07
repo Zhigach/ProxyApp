@@ -99,7 +99,7 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior
 
     Http().bindAndHandle(routes, interface = serverAddress, port = bindPort)
 
-    streamReaderActor ! StreamReader.Connect(Connection(endpoint, port))
+    //streamReaderActor ! StreamReader.Connect(Connection(endpoint, port))
 }
 
 object ProxyServer {
