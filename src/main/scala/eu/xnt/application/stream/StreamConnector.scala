@@ -22,6 +22,7 @@ object StreamConnector extends LazyLogging {
 
     def apply(connection: Connection): Behavior[Command] = {
         Behaviors.setup { context =>
+
             new StreamConnector(connection, context)
         }
     }
@@ -34,7 +35,6 @@ class StreamConnector(val connection: Connection, context: ActorContext[Command]
         implicit val ec = context.executionContext
         msg match {
             case Connect(replyTo) =>
-
                 def connect(): Future[InputStream] = {
                     connection.getStream.map {
                         inputStream =>
@@ -50,11 +50,9 @@ class StreamConnector(val connection: Connection, context: ActorContext[Command]
                     case Failure(exception) =>
                         logger.error(s"Exception occurred connecting ${connection.host}: ${connection.port}", exception)
                         replyTo ! StreamReader.WrappedConnectorResponse(Failed(exception))
-                        logger.debug("Replying to {}", replyTo)
                     case Success(inputStream) =>
                         logger.info(s"Stream connected at ${connection.host}: ${connection.port}")
                         replyTo ! StreamReader.WrappedConnectorResponse(Connected(inputStream))
-                        logger.debug("Replying to {}", replyTo)
                 }
                 Behaviors.same
             case _ =>

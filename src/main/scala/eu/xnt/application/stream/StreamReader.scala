@@ -1,5 +1,6 @@
 package eu.xnt.application.stream
 
+import akka.actor.TypedActor
 import akka.actor.TypedActor.context
 import akka.actor.typed.{ActorRef, Behavior, PreRestart, Signal, Terminated}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
@@ -46,17 +47,17 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteRece
      * @return
      */
     override def onMessage(msg: Command): Behavior[Command] = {
+        implicit val ec = context.executionContext
         msg match {
             case StreamReader.ReadStream(inputSteam) =>
-                logger.trace("ReadStream while connected")
-                context.pipeToSelf(readStream(inputSteam)) {
+                readStream(inputSteam) onComplete {
                     case Failure(exception) =>
                         logger.error("Error during reading stream: {}", exception)
-                        StreamReader.ReadStream(inputSteam)
+                        streamConnector ! StreamConnector.Connect(context.self)
                     case Success(streamData) =>
-                        streamData
+                        context.self ! streamData
+                        context.self ! StreamReader.ReadStream(inputSteam)
                 }
-                context.self ! StreamReader.ReadStream(inputSteam)
                 Behaviors.same
             case StreamReader.StreamData(messageBuffer) =>
                 logger.trace("StreamData received")
@@ -98,8 +99,5 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteRece
         case restart: PreRestart => streamConnector ! StreamConnector.Connect(context.self); this
     }
 
-    Thread.sleep(1000)
-    logger.debug("I'am {}", context.self)
     streamConnector ! StreamConnector.Connect(context.self)
-    logger.debug("After message is sent")
 }
