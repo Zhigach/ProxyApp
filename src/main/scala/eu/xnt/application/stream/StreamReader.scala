@@ -18,13 +18,9 @@ import scala.util.{Failure, Success}
 class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteReceiver: ActorRef[RepositoryCommand], context: ActorContext[Command])
   extends AbstractBehavior[Command] with LazyLogging {
 
-    //implicit val ec: ExecutionContext = context.dispatcher //FIXME глобальный и акторный ec - зло
-
     /*override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
         case _ : RuntimeException => SupervisorStrategy.Restart
     }*/ //FIXME do that for the akka.typed
-
-    streamConnector ! StreamConnector.Connect(context.self)
 
     /**
      * Disconnected state
@@ -32,34 +28,39 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteRece
      * @return
      */
     override def onMessage(msg: Command): Behavior[Command] = {
-        Behaviors.setup { context =>
-            Behaviors.receiveMessage[Command] {
-                case StreamReader.ReadStream(inputSteam) =>
-                    logger.debug("ReadStream while connected")
-                    context.pipeToSelf(readStream(inputSteam)) {
-                        case Failure(exception) =>
-                            logger.error("Error during reading stream: {}", exception)
-                            StreamReader.ReadStream(inputSteam)
-                        case Success(streamData) =>
-                            streamData
-                    }
-                    context.self ! StreamReader.ReadStream(inputSteam)
-                    Behaviors.same
-                case StreamReader.StreamData(messageBuffer) =>
-                    logger.debug("StreamData received")
-                    val quote = Quote.parse(messageBuffer)
-                    quoteReceiver ! AddQuote(quote)
-                    Behaviors.same
-                case StreamReader.WrappedConnected(connected) =>
-                    context.self ! StreamReader.ReadStream(connected.inputStream)
-                    Behaviors.same
-                case StreamReader.WrappedFailed(failed) =>
-                    context.scheduleOnce(reconnectPeriod, streamConnector, StreamConnector.Connect(context.self))
-                    Behaviors.same
-
-            }
+        msg match {
+            case StreamReader.ReadStream(inputSteam) =>
+                logger.debug("ReadStream while connected")
+                context.pipeToSelf(readStream(inputSteam)) {
+                    case Failure(exception) =>
+                        logger.error("Error during reading stream: {}", exception)
+                        StreamReader.ReadStream(inputSteam)
+                    case Success(streamData) =>
+                        streamData
+                }
+                context.self ! StreamReader.ReadStream(inputSteam)
+                Behaviors.same
+            case StreamReader.StreamData(messageBuffer) =>
+                logger.debug("StreamData received")
+                val quote = Quote.parse(messageBuffer)
+                quoteReceiver ! AddQuote(quote)
+                Behaviors.same
+            case StreamReader.WrappedConnectorResponse(status) =>
+                logger.debug("ConnectionStatus message received")
+                status match {
+                    case StreamConnector.Connected(inputStream) =>
+                        context.self ! StreamReader.ReadStream(inputStream)
+                        Behaviors.same
+                    case StreamConnector.Failed(_) =>
+                        context.scheduleOnce(reconnectPeriod, streamConnector, StreamConnector.Connect(context.self))
+                        Behaviors.same
+                }
+            case _ =>
+                logger.info("Unsupported message received")
+                Behaviors.same
         }
     }
+
 
     private def readStream(inputStream: InputStream): Future[StreamData] = {
         try {
@@ -79,8 +80,11 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command], quoteRece
         case restart: PreRestart => streamConnector ! StreamConnector.Connect(context.self); this
     }
 
-    //context.self ! Connect(connection)
-
+    Thread.sleep(1000)
+    logger.debug("I'am {}", context.self)
+    streamConnector ! StreamConnector.Connect(context.self)
+    //streamConnector ! StreamConnector.Connect(context.self)
+    logger.debug("After message is sent")
 }
 
 object StreamReader extends LazyLogging {
@@ -88,8 +92,7 @@ object StreamReader extends LazyLogging {
     sealed trait Command
     private case class ReadStream(inputSteam: InputStream) extends Command
     private case class StreamData(messageBuffer: ByteBuffer) extends Command
-    case class WrappedConnected(connected: StreamConnector.Connected) extends Command
-    case class WrappedFailed(failed: StreamConnector.Failed) extends Command
+    case class WrappedConnectorResponse(status: StreamConnector.ConnectionStatus) extends Command
 
     val reconnectPeriod: FiniteDuration = 5 seconds
 

@@ -1,6 +1,5 @@
 package eu.xnt.application.stream
 
-import akka.actor.TypedActor.dispatcher
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import com.typesafe.scalalogging.LazyLogging
@@ -12,35 +11,37 @@ import scala.util.{Failure, Success}
 
 class StreamConnector(val connection: Connection, context: ActorContext[Command]) extends AbstractBehavior[Command] with LazyLogging {
 
-    private def connect(): Future[InputStream] = {
-        connection.getStream.map {
-            inputStream =>
-                inputStream
-        }(context.executionContext) recoverWith {
-            case exception =>
-                Future.failed(new IOException("Stream connection failed", exception))
-        }
-    }
-
 
     override def onMessage(msg: Command): Behavior[Command] = {
-        Behaviors.setup { context =>
-            Behaviors.receiveMessage {
-                case Connect(replyTo) =>
-                    context.pipeToSelf(connect()) {
-                        case Failure(exception) =>
-                            logger.error(s"Exception occurred connecting ${connection.host}: ${connection.port}", exception)
-                            replyTo ! StreamReader.WrappedFailed(Failed(exception))
-                            Failed(exception)
-                        case Success(inputStream) =>
-                            logger.info(s"Stream connected at ${connection.host}: ${connection.port}")
-                            replyTo ! StreamReader.WrappedConnected(Connected(inputStream))
-                            Connected(inputStream)
+        implicit val ec = context.executionContext
+        msg match {
+            case Connect(replyTo) =>
+
+                def connect(): Future[InputStream] = {
+                    connection.getStream.map {
+                        inputStream =>
+                            inputStream
+                    } recoverWith {
+                        case exception =>
+                            Future.failed(new IOException("Stream connection failed", exception))
                     }
-                    Behaviors.same
-                case _ =>
-                    Behaviors.same
-            }
+                }
+
+                logger.debug("Connect message received")
+                connect() onComplete {
+                    case Failure(exception) =>
+                        logger.error(s"Exception occurred connecting ${connection.host}: ${connection.port}", exception)
+                        replyTo ! StreamReader.WrappedConnectorResponse(Failed(exception))
+                        logger.debug("Replying to {}", replyTo)
+                    case Success(inputStream) =>
+                        logger.info(s"Stream connected at ${connection.host}: ${connection.port}")
+                        replyTo ! StreamReader.WrappedConnectorResponse(Connected(inputStream))
+                        logger.debug("Replying to {}", replyTo)
+                }
+                Behaviors.same
+            case _ =>
+                logger.info("Unsupported message received")
+                Behaviors.same
         }
     }
 }
@@ -49,8 +50,10 @@ object StreamConnector extends LazyLogging {
 
     sealed trait Command
     case class Connect(replyTo: ActorRef[StreamReader.Command]) extends Command
-    case class Connected(inputStream: InputStream) extends Command
-    case class Failed(exception: Throwable) extends Command
+
+    sealed trait ConnectionStatus
+    case class Connected(inputStream: InputStream) extends ConnectionStatus
+    case class Failed(exception: Throwable) extends ConnectionStatus
 
 
     def apply(connection: Connection): Behavior[Command] = {

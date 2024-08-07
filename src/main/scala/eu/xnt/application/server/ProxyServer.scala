@@ -11,6 +11,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy}
 import akka.util.{ByteString, Timeout}
+import com.typesafe.scalalogging.LazyLogging
 import eu.xnt.application.model.CandleModels.Candle
 import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
 import eu.xnt.application.stream.{Connection, StreamReader}
@@ -26,7 +27,7 @@ import scala.language.postfixOps
 import scala.util.Success
 
 
-class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior[CandleHistory] {
+class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior[CandleHistory] with LazyLogging {
 
     private val (endpoint, port) = ("localhost", 5555)
     private val (serverAddress, bindPort) = ("localhost", 8080)
@@ -38,7 +39,7 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher //FIXME глобальный и акторный ec - зло
     implicit val materializer: Materializer = ActorMaterializer()
 
-
+    
     private val repositoryActor =
         context.spawn(RepositoryActor(new InMemoryCandleRepository(defaultCandleDurationMillis)), "RepositoryActor")
 
@@ -99,7 +100,6 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior
 
     Http().bindAndHandle(routes, interface = serverAddress, port = bindPort)
 
-    //streamReaderActor ! StreamReader.Connect(Connection(endpoint, port))
 }
 
 object ProxyServer {
