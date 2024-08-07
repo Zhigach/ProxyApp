@@ -22,19 +22,18 @@ object StreamConnector extends LazyLogging {
 
     def apply(connection: Connection): Behavior[Command] = {
         Behaviors.setup { context =>
-
-            new StreamConnector(connection, context)
+            new StreamConnector(connection, context).basicBehavior()
         }
     }
 }
 
-class StreamConnector(val connection: Connection, context: ActorContext[Command]) extends AbstractBehavior[Command] with LazyLogging {
+class StreamConnector(val connection: Connection, context: ActorContext[Command]) extends LazyLogging {
 
-
-    override def onMessage(msg: Command): Behavior[Command] = {
+    def basicBehavior(): Behavior[Command] = {
         implicit val ec = context.executionContext
-        msg match {
+        Behaviors.receiveMessage {
             case Connect(replyTo) =>
+
                 def connect(): Future[InputStream] = {
                     connection.getStream.map {
                         inputStream =>

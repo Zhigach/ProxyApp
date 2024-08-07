@@ -17,7 +17,8 @@ import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
 import eu.xnt.application.stream.{Connection, StreamReader}
 import eu.xnt.application.utils.Math._
 import eu.xnt.application.model.JsonSupport.CandleJsonFormat
-import eu.xnt.application.repository.RepositoryActor.{CandleHistory, CandleHistoryRequest}
+import eu.xnt.application.repository.RepositoryActor.CandleHistoryRequest
+import eu.xnt.application.server.ProxyServer.CandleHistory
 import spray.json.enrichAny
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -27,14 +28,17 @@ import scala.util.Success
 
 
 object ProxyServer {
+
+    final case class CandleHistory(candles: Vector[Candle])
+
     def apply(): Behavior[CandleHistory] = {
         Behaviors.setup { context =>
-            new ProxyServer(context)
+            new ProxyServer(context).ignoringBehavior()
         }
     }
 }
 
-class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior[CandleHistory] with LazyLogging {
+class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
 
     private val (endpoint, port) = ("localhost", 5555)
     private val (serverAddress, bindPort) = ("localhost", 8080)
@@ -54,7 +58,9 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior
         context.spawn(StreamReader(Connection(endpoint, port), repositoryActor), "StreamReader")
     }
 
-    override def onMessage(msg: CandleHistory): Behavior[CandleHistory] = Behaviors.same
+    private def ignoringBehavior(): Behavior[CandleHistory] = {
+        Behaviors.same
+    }
 
     private val (sourceActorRef, source) =
         Source.actorRef[Candle](
@@ -89,8 +95,9 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends AbstractBehavior
             path("") {
                 implicit val scheduler: Scheduler = system.scheduler
                 implicit val timeout: Timeout = Timeout(10 seconds)
+
                 val candleCacheFuture: Future[CandleHistory] =
-                    repositoryActor.ask(replyTo => CandleHistoryRequest(initialHistoryDepth, replyTo)) //FIXME replace with ActorContext.ask
+                    repositoryActor.ask(replyTo => CandleHistoryRequest(initialHistoryDepth, replyTo))
 
                 onComplete(candleCacheFuture) {
                     case Success(candles) =>
