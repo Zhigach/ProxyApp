@@ -19,6 +19,7 @@ libraryDependencies ++= Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
     "ch.qos.logback" % "logback-classic" % "1.5.6",
     "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % Test,
+    "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
     "org.scalatest" %% "scalatest" % "3.2.19" % Test
 )
 

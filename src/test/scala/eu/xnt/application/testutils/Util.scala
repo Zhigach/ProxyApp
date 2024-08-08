@@ -1,4 +1,4 @@
-package eu.xnt.application.repository.testutils
+package eu.xnt.application.testutils
 
 import akka.util.ByteString
 import eu.xnt.application.model.Quote
