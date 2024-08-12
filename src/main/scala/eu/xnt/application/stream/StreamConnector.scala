@@ -33,7 +33,7 @@ class StreamConnector(val connection: Connection, context: ActorContext[Command]
         implicit val ec: ExecutionContextExecutor = context.executionContext
         Behaviors.receiveMessage {
             case Connect(replyTo) =>
-
+                logger.debug("Connecting to {} : {}", connection.host, connection.port)
                 def connect(): Future[InputStream] = {
                     connection.getStream.map {
                         inputStream =>
@@ -44,7 +44,6 @@ class StreamConnector(val connection: Connection, context: ActorContext[Command]
                     }
                 }
 
-                logger.trace("Connect message received")
                 connect() onComplete {
                     case Failure(exception) =>
                         logger.error(s"Exception occurred connecting ${connection.host}: ${connection.port}", exception)

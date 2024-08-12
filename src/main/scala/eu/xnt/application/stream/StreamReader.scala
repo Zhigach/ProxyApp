@@ -18,7 +18,7 @@ object StreamReader extends LazyLogging {
 
     sealed trait Command
     private case class ReadStream(inputSteam: InputStream) extends Command
-    private case object Reconnect extends Command
+    case object Reconnect extends Command
     case class WrappedConnectorResponse(status: StreamConnector.ConnectionStatus) extends Command
 
 
@@ -40,7 +40,6 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command],
     private def disconnectedBehavior(): Behavior[Command] = {
         Behaviors.receiveMessage {
             case StreamReader.WrappedConnectorResponse(status) =>
-                logger.trace("ConnectionStatus message received")
                 status match {
                     case StreamConnector.Connected(inputStream) =>
                         context.self ! StreamReader.ReadStream(inputStream)
@@ -59,14 +58,21 @@ class StreamReader(streamConnector: ActorRef[StreamConnector.Command],
         implicit val ec: ExecutionContextExecutor = context.executionContext
             Behaviors.receiveMessage {
                 case StreamReader.ReadStream(inputSteam) =>
+
                     readStream(inputSteam) onComplete {
+
                         case Failure(_) =>
-                            context.self ! Reconnect
+                            context.self ! StreamReader.Reconnect
                         case Success(streamData) =>
-                            logger.trace("StreamData received")
                             val quote = Quote.parse(streamData)
-                            quoteReceiver ! AddQuote(quote)
-                            context.self ! StreamReader.ReadStream(inputSteam)
+                            quote match {
+                                case Success(q) =>
+                                    quoteReceiver ! AddQuote(q)
+                                    context.self ! StreamReader.ReadStream(inputSteam)
+                                case Failure(exception) =>
+                                    logger.error("Failed to read stream", exception)
+                                    context.scheduleOnce(reconnectPeriod, context.self, StreamReader.Reconnect)
+                            }
                     }
                     Behaviors.same
                 case StreamReader.Reconnect =>
