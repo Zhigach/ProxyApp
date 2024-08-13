@@ -14,7 +14,7 @@ import eu.xnt.application.stream.Connection
 import eu.xnt.application.testutils.Util._
 
 import java.nio.ByteBuffer
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -37,14 +37,15 @@ class ProxyServerTest extends UnitTestSpec {
                 oldQuotes concat quoteSource
             )
 
-        Tcp()
-          .bind(connection.host, connection.port)
-          .runForeach {
-              connection => connection.handleWith(quoteFlow)
-          }
+        val (tcpServer, serverSource) = Tcp().bind(connection.host, connection.port).preMaterialize()
+        Await.ready(tcpServer, 10 seconds)
+        serverSource.runForeach { connection =>
+            connection.handleWith(quoteFlow)
+        }
     }
 
     override protected def afterAll(): Unit = {
+        testKit.system.terminate()
         testKit.shutdownTestKit()
         system.terminate()
         actorSystem.terminate()

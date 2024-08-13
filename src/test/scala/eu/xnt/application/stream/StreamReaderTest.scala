@@ -11,6 +11,7 @@ import eu.xnt.application.repository.RepositoryActor
 import eu.xnt.application.testutils.Util._
 
 import java.nio.ByteBuffer
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -30,11 +31,13 @@ class StreamReaderTest extends UnitTestSpec {
 
         val quoteFlow: Flow[ByteString, ByteString, NotUsed] = Flow.fromSinkAndSource(Sink.ignore, quoteSource)
 
-        Tcp()
-          .bind(connection.host, connection.port)
-          .runForeach {
-              connection => connection.handleWith(quoteFlow)
-          }
+        val (tcpServer, serverSource) = Tcp().bind(connection.host, connection.port).preMaterialize()
+        Await.ready(tcpServer, 10 seconds)
+
+        serverSource.runForeach { connection =>
+            connection.handleWith(quoteFlow)
+        }
+
     }
 
     override def afterAll(): Unit = {
