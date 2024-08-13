@@ -4,7 +4,7 @@ import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import eu.xnt.application.UnitTestSpec
 import eu.xnt.application.server.ProxyServer
 import eu.xnt.application.server.ProxyServer.CandleHistory
-import eu.xnt.application.testutils.Util.randomQuote
+import eu.xnt.application.testutils.Util.oldQuote
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -17,11 +17,9 @@ class RepositoryActorTest extends UnitTestSpec {
     private val repositoryActor = testKit.spawn(RepositoryActor(inMemoryCandleRepository), "TestRepositoryActor")
     private val testProbe = testKit.createTestProbe[ProxyServer.CandleHistory]("TestProbe")
 
-    private val ts = (System.currentTimeMillis() / 60000 - 2) * 60000 + 1
-
     "RepositoryActor" should "save quote" in {
-        repositoryActor ! RepositoryActor.AddQuote(randomQuote(ts, "TEST"))
-        testProbe.expectNoMessage(400 millis) //TODO как бы избавиться от костыля?
+        repositoryActor ! RepositoryActor.AddQuote(oldQuote(2, "TEST"))
+        testProbe.expectNoMessage(400 millis)
         inMemoryCandleRepository.bufferSize("TEST") shouldEqual 1
         inMemoryCandleRepository.bufferSize("TST") shouldEqual 0
     }
@@ -33,7 +31,7 @@ class RepositoryActorTest extends UnitTestSpec {
     }
 
     it should "save quote into new candle" in {
-        repositoryActor ! RepositoryActor.AddQuote(randomQuote(ts + 60001, "TEST"))
+        repositoryActor ! RepositoryActor.AddQuote(oldQuote(1, "TEST"))
         testProbe.expectNoMessage(400 millis) //TODO как бы избавиться от костыля?
         inMemoryCandleRepository.bufferSize("TEST") shouldEqual 2
     }

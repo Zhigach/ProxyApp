@@ -1,6 +1,12 @@
 package eu.xnt.application.testutils
 
+import akka.actor.testkit.typed.scaladsl.TestProbe
+import akka.http.scaladsl.model.HttpResponse
+import akka.stream.Materializer
+import akka.util.ByteString
 import eu.xnt.application.model.Quote
+import spray.json.DefaultJsonProtocol.StringJsonFormat
+import spray.json.JsonParser
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
@@ -30,5 +36,13 @@ object Util {
           .putInt(q.size)
           .array()
         buffer
+    }
+
+    def handleHttpResponse(response: HttpResponse, testProbe: TestProbe[String])(implicit materializer: Materializer) = {
+        response.entity.dataBytes.runForeach { chunk: ByteString =>
+            val json = JsonParser(chunk.utf8String)
+            val ticker = json.asJsObject.fields("ticker").convertTo[String]
+            testProbe.ref ! ticker
+        }(materializer)
     }
 }

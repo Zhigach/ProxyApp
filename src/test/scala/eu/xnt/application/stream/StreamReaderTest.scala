@@ -17,7 +17,6 @@ import scala.language.postfixOps
 
 class StreamReaderTest extends UnitTestSpec {
 
-    val connection: Connection = Connection("localhost", 5554)
     implicit val actorSystem = ActorSystem("ServerActorSystem")
 
     override protected def beforeAll(): Unit = {
@@ -38,6 +37,12 @@ class StreamReaderTest extends UnitTestSpec {
           }
     }
 
+    override def afterAll(): Unit = {
+        testKit.shutdownTestKit()
+        actorSystem.terminate()
+    }
+
+    val connection: Connection = Connection("localhost", 5554)
     private val testKit = ActorTestKit("StreamReaderTest")
 
     private val quoteReceiverMock = testKit.createTestProbe[RepositoryActor.RepositoryCommand]("TestProbe")
@@ -49,10 +54,5 @@ class StreamReaderTest extends UnitTestSpec {
 
     it should "reconnect after stream fails" in {
         quoteReceiverMock.expectMessageType[RepositoryActor.AddQuote](7 seconds)
-    }
-
-    override def afterAll(): Unit = {
-        testKit.shutdownTestKit()
-        actorSystem.terminate()
     }
 }
