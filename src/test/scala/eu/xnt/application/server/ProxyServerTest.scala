@@ -1,101 +1,102 @@
 package eu.xnt.application.server
 
 import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.event.Logging
+import akka.actor.testkit.typed.FishingOutcome
+import akka.actor.testkit.typed.scaladsl.ActorTestKit
+import akka.actor.{ActorSystem, _}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, Uri}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source, Tcp}
-import akka.testkit.{TestKit, TestProbe}
 import akka.util.ByteString
-import eu.xnt.application.repository.testutils.Util
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.wordspec.AnyWordSpecLike
+import eu.xnt.application.UnitTestSpec
+import eu.xnt.application.stream.Connection
+import eu.xnt.application.testutils.Util._
 import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.JsonParser
 
+import java.nio.ByteBuffer
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 
-class ProxyServerTest extends TestKit(ActorSystem("ProxyServerTest"))
-  with AnyWordSpecLike
-  with BeforeAndAfterAll {
+class ProxyServerTest extends UnitTestSpec {
 
-    private val proxyServer = ProxyServer
+    val connection: Connection = Connection("localhost", 5555)
+    private val testKit = ActorTestKit("StreamReaderTest")
 
-    implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+    val system: typed.ActorSystem[ProxyServer.CandleHistory] =
+        typed.ActorSystem(ProxyServer(), "ProxyServerApp")
+
+    implicit val actorSystem = ActorSystem("ServerActorSystem")
     implicit val materializer: ActorMaterializer = ActorMaterializer()
+    implicit val ec: ExecutionContextExecutor = testKit.system.executionContext
 
 
-    private val oldQuotes = Source(List(Util.oldQuote(10, "OLD"), Util.oldQuote(5, "OLD")))
-      .map(q => ByteString(Util.encodeQuote(q)))
+    override protected def beforeAll(): Unit = {
 
-    private val quoteSource = Source(1 to 600).throttle(1, 1 second)
-      .map(_ => Util.randomQuote())
-      .map(q => ByteString(Util.encodeQuote(q)))
+        val oldQuotes = Source(List(oldQuote(9, "OLD"), oldQuote(1, "OLD")))
+          .map(q => ByteString(ByteBuffer.allocate(2).putShort(q.len).array() ++ encodeQuote(q)))
 
-    val quoteFlow: Flow[ByteString, ByteString, NotUsed] =
-        Flow.fromSinkAndSource(
-            Sink.ignore,
-            oldQuotes concat quoteSource
-        )
+        val quoteSource = Source(1 to 600).throttle(1, 1 second)
+          .map(_ => randomQuote(ticker = "PS.TEST"))
+          .map(q => ByteString(ByteBuffer.allocate(2).putShort(q.len).array() ++ encodeQuote(q)))
 
-    Tcp()
-      .bind("localhost", 5555)
-      .runForeach {
-          connection => connection.handleWith(quoteFlow)
-      }
+        val quoteFlow: Flow[ByteString, ByteString, NotUsed] =
+            Flow.fromSinkAndSource(
+                Sink.ignore,
+                oldQuotes concat quoteSource
+            )
 
-
-    "ProxyServer" must {
-
-        val logProbe = TestProbe()
-        proxyServer.system.eventStream.subscribe(logProbe.ref, classOf[Logging.LogEvent] )
-
-        "connect to a source feed" in {
-            logProbe.fishForMessage(10 seconds) {
-                case Logging.Info(_, _, msg: String) if msg.contains("Stream connected") => true
-                case _ => false
-            }
-        }
-
-        "receive quotes" in {
-            expectNoMessage(10 seconds)
-        }
-
-
-        "provide historical data to a newly connected client" in {
-
-            val reqFuture = Http().singleRequest(HttpRequest(HttpMethods.GET, Uri("http://localhost:8080")))
-            reqFuture.onComplete {
-                case Success(response) =>
-                    response.entity.dataBytes.runForeach { chunk: ByteString =>
-                        val json = JsonParser(chunk.utf8String)
-                        val ticker = json.asJsObject.fields("ticker").convertTo[String]
-                        logProbe.send(logProbe.ref, ticker)
-                    }
-                case Failure(error) =>
-                    println(s"Request failed: $error")
-            }
-
-            logProbe.expectMsg(10 seconds, "OLD")
-        }
-
-        "send new candle at the start of a new minute" in {
-            logProbe.fishForMessage(65 seconds) {
-                case "TEST" => true
-                case _ => false
-            }
-        }
-
+        Tcp()
+          .bind(connection.host, connection.port)
+          .runForeach {
+              connection => connection.handleWith(quoteFlow)
+          }
     }
 
+    val testProbe = testKit.createTestProbe[String]("QuoteListener")
+
+    "ProxyServer" should "provide historical data to a newly connected client" in {
+        testProbe.expectNoMessage(10 second)
+        Http().singleRequest(HttpRequest(HttpMethods.GET, Uri("http://localhost:8080"))) onComplete {
+            case Success(response) =>
+                response.entity.dataBytes.runForeach { chunk: ByteString =>
+                    val json = JsonParser(chunk.utf8String)
+                    val ticker = json.asJsObject.fields("ticker").convertTo[String]
+                    testProbe.ref ! ticker
+                }
+            case Failure(exception) => fail("Failed to receive response: {}", exception)
+        }
+        testProbe.expectMessage(10 seconds, "OLD")
+        testProbe.expectMessage(10 seconds, "OLD")
+    }
+
+    it should "send new candles" in {
+        val reqFuture = Http().singleRequest(HttpRequest(HttpMethods.GET, Uri("http://localhost:8080")))
+        reqFuture.onComplete {
+            case Success(response) =>
+                response.entity.dataBytes.runForeach { chunk: ByteString =>
+                    val json = JsonParser(chunk.utf8String)
+                    val ticker = json.asJsObject.fields("ticker").convertTo[String]
+                    testProbe.ref ! ticker
+                }
+            case Failure(error) =>
+                println(s"Request failed: $error")
+        }
+        testProbe.fishForMessage(65 seconds) {
+            case "PS.TEST" => FishingOutcome.Complete
+            case _ => FishingOutcome.Continue
+        }
+    }
+
+
     override protected def afterAll(): Unit = {
-        TestKit.shutdownActorSystem(system)
+        testKit.shutdownTestKit()
+        system.terminate()
+        actorSystem.terminate()
     }
 
 }

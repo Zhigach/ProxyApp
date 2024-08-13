@@ -10,7 +10,7 @@ import scala.language.postfixOps
  * Storage for candles. Can hold candle for numerous instruments
  * @param candleDuration candle timeframe duration
  */
-case class InMemoryCandleRepository(candleDuration: Long) {
+class InMemoryCandleRepository(candleDuration: Long) {
 
     private val candleBuffers: ArrayBuffer[CandleBuffer] = ArrayBuffer()
 
@@ -30,8 +30,8 @@ case class InMemoryCandleRepository(candleDuration: Long) {
      * @param depth depth of history in minutes
      * @return historical candles which are not older that specified depth in minutes for all tickers in storage
      */
-    def getHistoricalCandles(depth: Int = 1): Array[Candle] = {
-        candleBuffers.flatMap(cb => cb.getHistoricalCandles(depth)).toArray
+    def getHistoricalCandles(depth: Int = 1): Vector[Candle] = {
+        candleBuffers.flatMap(cb => cb.getHistoricalCandles(depth)).toVector
     }
 
     private def addQuote(quote: Quote, buffer: CandleBuffer): Unit = {
@@ -48,7 +48,7 @@ case class InMemoryCandleRepository(candleDuration: Long) {
             case Some(buffer) =>
                 addQuote(q, buffer)
             case None => // если буфера для такого тикера нет, то создаем новый
-                candleBuffers.addOne(CandleBuffer(ticker, candleDuration))
+                candleBuffers.addOne(new CandleBuffer(ticker, candleDuration))
                 val newBuffer = getBuffer(ticker)
                 addQuote(q, newBuffer.get)
         }

@@ -1,26 +1,44 @@
 package eu.xnt.application.repository
 
-import akka.actor.{Actor, ActorLogging}
-import eu.xnt.application.model.CandleModels.{CandleResponse, HistoryRequest}
+import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import com.typesafe.scalalogging.LazyLogging
 import eu.xnt.application.model.Quote
+import eu.xnt.application.repository.RepositoryActor.RepositoryCommand
+import eu.xnt.application.server.ProxyServer.CandleHistory
 
 
-class RepositoryActor(repository: InMemoryCandleRepository) extends Actor with ActorLogging {
+object RepositoryActor extends LazyLogging {
+
+    sealed trait RepositoryCommand
+    case class AddQuote(q: Quote) extends RepositoryCommand
+    case class CandleHistoryRequest(limit: Int = 1, replyTo: ActorRef[CandleHistory]) extends RepositoryCommand
+
+
+    def apply(repository: InMemoryCandleRepository): Behavior[RepositoryCommand] = {
+        Behaviors.setup( context => {
+            val repositoryActor = new RepositoryActor(repository, context)
+            repositoryActor.basicBehavior()
+        })
+    }
+}
+
+class RepositoryActor(repository: InMemoryCandleRepository, context: ActorContext[RepositoryCommand])
+  extends LazyLogging {
 
     private def addQuote(quote: Quote): Unit =
-        synchronized { repository.addQuote(quote) }
+        repository.addQuote(quote)
 
-    /**
-     * Basic actor behaviour. Receives only two types of messages 1) new quote (adds it to storage);
-     * 2) HistoryRequest for candles
-     */
-    override def receive: Receive = {
-        case q: Quote =>
-            addQuote(q)
-        case HistoryRequest(limit) =>
-            val candles = repository.getHistoricalCandles(limit)
-            sender() ! CandleResponse(candles)
-        case _ =>
-            log.debug("Unsupported message received")
+    private def basicBehavior(): Behavior[RepositoryCommand] = {
+        Behaviors.receiveMessage {
+            case RepositoryActor.AddQuote(q) =>
+                logger.debug("Quote received: {}", q)
+                addQuote(q)
+                Behaviors.same
+            case RepositoryActor.CandleHistoryRequest(limit, replyTo) =>
+                val candles = repository.getHistoricalCandles(limit)
+                replyTo ! CandleHistory(candles)
+                Behaviors.same
+        }
     }
 }

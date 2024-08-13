@@ -1,7 +1,7 @@
 package eu.xnt.application.utils
 
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
+import scala.language.postfixOps
 
 object Math {
     
@@ -12,7 +12,7 @@ object Math {
     def millisToNewTimeframe(timeframeMillisDuration: Int = 60000): FiniteDuration = {
         val currentTimeMillis = System.currentTimeMillis()
         val delayToFirstExecution = roundBy(currentTimeMillis, timeframeMillisDuration) + timeframeMillisDuration - currentTimeMillis
-        Duration.create(delayToFirstExecution, TimeUnit.MILLISECONDS)
+        delayToFirstExecution millis
     }
 
 }
