@@ -1,6 +1,7 @@
 ThisBuild / version := "0.1.1-SNAPSHOT"
-
 ThisBuild / scalaVersion := "2.13.10"
+
+Test / parallelExecution := false
 
 resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 

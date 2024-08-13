@@ -1,20 +1,15 @@
 package eu.xnt.application.server
 
 import akka.NotUsed
-import akka.actor.testkit.typed.scaladsl.ActorTestKit
-import akka.actor._
 import akka.actor.testkit.typed.FishingOutcome
-import akka.actor.{ActorSystem, actorRef2Scala}
-import akka.event.Logging
+import akka.actor.testkit.typed.scaladsl.ActorTestKit
+import akka.actor.{ActorSystem, _}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, Uri}
-import akka.stream.{ActorMaterializer, ThrottleMode}
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source, Tcp}
-import akka.testkit.{TestKit, TestProbe}
 import akka.util.ByteString
 import eu.xnt.application.UnitTestSpec
-import eu.xnt.application.repository.RepositoryActor
-import eu.xnt.application.repository.RepositoryActor.AddQuote
 import eu.xnt.application.stream.Connection
 import eu.xnt.application.testutils.Util._
 import spray.json.DefaultJsonProtocol.StringJsonFormat
@@ -42,7 +37,7 @@ class ProxyServerTest extends UnitTestSpec {
 
     override protected def beforeAll(): Unit = {
 
-        val oldQuotes = Source(List(oldQuote(10, "OLD"), oldQuote(1, "OLD")))
+        val oldQuotes = Source(List(oldQuote(9, "OLD"), oldQuote(1, "OLD")))
           .map(q => ByteString(ByteBuffer.allocate(2).putShort(q.len).array() ++ encodeQuote(q)))
 
         val quoteSource = Source(1 to 600).throttle(1, 1 second)
@@ -65,6 +60,7 @@ class ProxyServerTest extends UnitTestSpec {
     val testProbe = testKit.createTestProbe[String]("QuoteListener")
 
     "ProxyServer" should "provide historical data to a newly connected client" in {
+        testProbe.expectNoMessage(10 second)
         Http().singleRequest(HttpRequest(HttpMethods.GET, Uri("http://localhost:8080"))) onComplete {
             case Success(response) =>
                 response.entity.dataBytes.runForeach { chunk: ByteString =>
@@ -72,14 +68,13 @@ class ProxyServerTest extends UnitTestSpec {
                     val ticker = json.asJsObject.fields("ticker").convertTo[String]
                     testProbe.ref ! ticker
                 }
-            case Failure(exception) => fail("Failed to receive response")
+            case Failure(exception) => fail("Failed to receive response: {}", exception)
         }
         testProbe.expectMessage(10 seconds, "OLD")
         testProbe.expectMessage(10 seconds, "OLD")
     }
 
     it should "send new candles" in {
-
         val reqFuture = Http().singleRequest(HttpRequest(HttpMethods.GET, Uri("http://localhost:8080")))
         reqFuture.onComplete {
             case Success(response) =>
@@ -97,16 +92,11 @@ class ProxyServerTest extends UnitTestSpec {
         }
     }
 
-    it should "send new candle at the start of a new minute" in {
-        /*logProbe.fishForMessage(65 seconds) {
-            case "TEST" => true
-            case _ => false
-        }*/
-    }
-
 
     override protected def afterAll(): Unit = {
         testKit.shutdownTestKit()
+        system.terminate()
+        actorSystem.terminate()
     }
 
 }

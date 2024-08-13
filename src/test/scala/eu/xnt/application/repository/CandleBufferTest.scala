@@ -1,28 +1,27 @@
 package eu.xnt.application.repository
 
 import eu.xnt.application.UnitTestSpec
-import eu.xnt.application.testutils.Util.randomQuote
+import eu.xnt.application.testutils.Util.{oldQuote, randomQuote}
 
 
 class CandleBufferTest extends UnitTestSpec {
 
     private val candleBuffer = new CandleBuffer("TEST.TEST", 60000)
-    private val ts = (System.currentTimeMillis() / 60000 - 2) * 60000 + 1 // make two minutes old timestamp
 
     "CandleBuffer" should "add quote" in {
-        candleBuffer.addQuote(randomQuote(ts))
+        candleBuffer.addQuote(oldQuote(2))
         candleBuffer.buffer should have size 1
     }
 
     it should "change old candle if this is the same minute" in {
         val candle = candleBuffer.buffer.head
-        candleBuffer.addQuote(randomQuote(ts + 1))
+        candleBuffer.addQuote(oldQuote(2))
         val newCandle = candleBuffer.buffer.head
         newCandle should not be candle
     }
 
     it should "create new candle if new quote is in a new minute" in {
-        candleBuffer.addQuote(randomQuote(ts + 60000))
+        candleBuffer.addQuote(oldQuote(1))
         candleBuffer.buffer should have size 2
     }
 

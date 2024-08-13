@@ -24,7 +24,6 @@ class StreamReaderTest extends UnitTestSpec {
 
         implicit val materializer: ActorMaterializer = ActorMaterializer()
 
-        actorSystem.scheduler
         val quoteSource =
             Source(1 to 2).throttle(1, 1 second, 1, ThrottleMode.Shaping).initialDelay(0 second)
               .map(_ => randomQuote(System.currentTimeMillis()))
@@ -40,7 +39,6 @@ class StreamReaderTest extends UnitTestSpec {
     }
 
     private val testKit = ActorTestKit("StreamReaderTest")
-
 
     private val quoteReceiverMock = testKit.createTestProbe[RepositoryActor.RepositoryCommand]("TestProbe")
     private val streamReader = testKit.spawn(StreamReader(connection, quoteReceiverMock.ref), "StreamReader")
