@@ -10,8 +10,7 @@ import eu.xnt.application.UnitTestSpec
 import eu.xnt.application.repository.RepositoryActor
 import eu.xnt.application.testutils.Util._
 
-import java.nio.ByteBuffer
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -50,7 +49,7 @@ class StreamReaderTest extends UnitTestSpec {
     private val testKit = ActorTestKit("StreamReaderTest")
 
     private val quoteReceiverMock = testKit.createTestProbe[RepositoryActor.RepositoryCommand]("TestProbe")
-    private val streamReader = testKit.spawn(StreamReader(connection, quoteReceiverMock.ref), "StreamReader")
+    private val streamReader = testKit.spawn(StreamReader(connection, 5 seconds, quoteReceiverMock.ref), "StreamReader")
 
     "StreamReader" should "connect and start receiving quotes" in {
         quoteReceiverMock.expectMessageType[RepositoryActor.AddQuote](7 seconds)
