@@ -5,7 +5,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import com.typesafe.scalalogging.LazyLogging
 import eu.xnt.application.model.Quote
 import eu.xnt.application.repository.RepositoryActor.{AddQuote, RepositoryCommand}
-import eu.xnt.application.stream.StreamReader.{Command, Reconnect, reconnectPeriod}
+import eu.xnt.application.stream.StreamReader.{Command, Reconnect}
 
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -22,18 +22,16 @@ object StreamReader extends LazyLogging {
     case class WrappedConnectorResponse(status: StreamConnector.ConnectionStatus) extends Command
 
 
-    private val reconnectPeriod: FiniteDuration = 5 seconds
-
-    def apply(connection: Connection, quoteReceiver: ActorRef[RepositoryCommand]): Behavior[Command] = {
+    def apply(connection: Connection, reconnectPeriod: FiniteDuration, quoteReceiver: ActorRef[RepositoryCommand]): Behavior[Command] = {
         Behaviors.setup { context =>
             val streamConnector = context.spawn(StreamConnector(connection), "StreamConnector")
-            val streamReader = new StreamReader(streamConnector, quoteReceiver, context)
+            val streamReader = new StreamReader(streamConnector, reconnectPeriod, quoteReceiver, context)
             streamReader.disconnectedBehavior()
         }
     }
 }
 
-class StreamReader(streamConnector: ActorRef[StreamConnector.Command],
+class StreamReader(streamConnector: ActorRef[StreamConnector.Command], reconnectPeriod: FiniteDuration,
                    quoteReceiver: ActorRef[RepositoryCommand], context: ActorContext[Command])
   extends LazyLogging {
 

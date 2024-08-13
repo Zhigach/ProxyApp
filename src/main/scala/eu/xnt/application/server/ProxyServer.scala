@@ -11,6 +11,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy}
 import akka.util.{ByteString, Timeout}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import eu.xnt.application.model.CandleModels.Candle
 import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
@@ -22,7 +23,8 @@ import eu.xnt.application.server.ProxyServer.CandleHistory
 import spray.json.enrichAny
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.jdk.DurationConverters.JavaDurationOps
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
@@ -40,13 +42,18 @@ object ProxyServer {
 
 class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
 
-    private val (endpoint, port) = ("localhost", 5555)
-    private val (serverAddress, bindPort) = ("localhost", 8080)
-    private val defaultCandleDurationMillis = 60000
-    private val initialHistoryDepth = 10
+    private val config = ConfigFactory.load("application.conf").withFallback(ConfigFactory.load())
+
+    private val (endpoint, port) = (config.getString("proxy-server.connector.endpoint"),
+                                    config.getInt("proxy-server.connector.port"))
+    private val (serverAddress, bindPort) = (config.getString("proxy-server.server.serverAddress"),
+                                                config.getInt("proxy-server.server.bindPort"))
+    private val defaultCandleDurationMillis = config.getInt("proxy-server.server.defaultCandleDurationMillis")
+    private val initialHistoryDepth = config.getInt("proxy-server.server.initialHistoryDepth")
+    private val reconnectPeriod = config.getDuration("proxy-server.connector.reconnectPeriod").toScala
 
 
-    implicit val system: ActorSystem = ActorSystem("ProxyServer")
+    implicit val system: ActorSystem = ActorSystem("ProxyServer", config)
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
     implicit val materializer: Materializer = ActorMaterializer()
 
@@ -55,7 +62,7 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
         context.spawn(RepositoryActor(new InMemoryCandleRepository(defaultCandleDurationMillis)), "RepositoryActor")
 
     private val streamReaderActor = {
-        context.spawn(StreamReader(Connection(endpoint, port), repositoryActor), "StreamReader")
+        context.spawn(StreamReader(Connection(endpoint, port), reconnectPeriod, repositoryActor), "StreamReader")
     }
 
     private def ignoringBehavior(): Behavior[CandleHistory] = {
