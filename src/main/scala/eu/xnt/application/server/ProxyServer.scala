@@ -5,13 +5,14 @@ import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
+import akka.http.scaladsl.model.StatusCodes.InternalServerError
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy}
 import akka.util.{ByteString, Timeout}
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import eu.xnt.application.model.CandleModels.Candle
 import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
@@ -33,16 +34,14 @@ object ProxyServer {
 
     final case class CandleHistory(candles: Vector[Candle])
 
-    def apply(): Behavior[CandleHistory] = {
+    def apply(config: Config): Behavior[CandleHistory] = {
         Behaviors.setup { context =>
-            new ProxyServer(context).ignoringBehavior()
+            new ProxyServer(context, config).ignoringBehavior()
         }
     }
 }
 
-class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
-
-    private val config = ConfigFactory.load("application.conf").withFallback(ConfigFactory.load())
+class ProxyServer(context: ActorContext[CandleHistory], config: Config) extends LazyLogging {
 
     private val (endpoint, port) = (config.getString("proxy-server.connector.endpoint"),
                                     config.getInt("proxy-server.connector.port"))
@@ -95,11 +94,19 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
         }
     }
 
+    implicit def exceptionHandler: ExceptionHandler =
+        ExceptionHandler {
+            case _: ArithmeticException =>
+                extractUri { uri =>
+                    println(s"Request to $uri could not be handled normally")
+                    complete(HttpResponse(InternalServerError, entity = "Bad numbers, bad result!!!"))
+                }
+        }
 
     /**
      * Server routes
      */
-    private val routes: Route =
+    private val routes: Route = Route.seal(
         get {
             path("") {
                 implicit val scheduler: Scheduler = system.scheduler
@@ -118,6 +125,7 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
                 }
             }
         }
+    )
 
 
     Http().bindAndHandle(routes, interface = serverAddress, port = bindPort)

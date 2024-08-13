@@ -9,6 +9,7 @@ import akka.http.scaladsl.model.{HttpMethods, HttpRequest, Uri}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source, Tcp}
 import akka.util.ByteString
+import com.typesafe.config.ConfigFactory
 import eu.xnt.application.UnitTestSpec
 import eu.xnt.application.stream.Connection
 import eu.xnt.application.testutils.Util._
@@ -54,7 +55,7 @@ class ProxyServerTest extends UnitTestSpec {
     val connection: Connection = Connection("localhost", 5555)
 
     val system: typed.ActorSystem[ProxyServer.CandleHistory] =
-        typed.ActorSystem(ProxyServer(), "ProxyServerApp")
+        typed.ActorSystem(ProxyServer(ConfigFactory.load("application.conf").withFallback(ConfigFactory.load())), "ProxyServerApp")
     val testKit: ActorTestKit = ActorTestKit("StreamReaderTest")
     val testProbe: TestProbe[String] = testKit.createTestProbe[String]("QuoteListener")
 
