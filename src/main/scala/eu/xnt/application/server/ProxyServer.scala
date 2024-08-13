@@ -1,30 +1,29 @@
 package eu.xnt.application.server
 
-import akka.actor.{ActorSystem, Scheduler}
-import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import akka.actor.{ActorSystem, Scheduler}
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes.InternalServerError
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy}
 import akka.util.{ByteString, Timeout}
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import eu.xnt.application.model.CandleModels.Candle
-import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
-import eu.xnt.application.stream.{Connection, StreamReader}
-import eu.xnt.application.utils.Math._
 import eu.xnt.application.model.JsonSupport.CandleJsonFormat
 import eu.xnt.application.repository.RepositoryActor.CandleHistoryRequest
+import eu.xnt.application.repository.{InMemoryCandleRepository, RepositoryActor}
 import eu.xnt.application.server.ProxyServer.CandleHistory
+import eu.xnt.application.stream.{Connection, StreamReader}
+import eu.xnt.application.utils.Math._
 import spray.json.enrichAny
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ExecutionContextExecutor, Future, TimeoutException}
 import scala.jdk.DurationConverters.JavaDurationOps
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -96,17 +95,14 @@ class ProxyServer(context: ActorContext[CandleHistory], config: Config) extends 
 
     implicit def exceptionHandler: ExceptionHandler =
         ExceptionHandler {
-            case _: ArithmeticException =>
-                extractUri { uri =>
-                    println(s"Request to $uri could not be handled normally")
-                    complete(HttpResponse(InternalServerError, entity = "Bad numbers, bad result!!!"))
-                }
+            case _: TimeoutException =>
+                complete(HttpResponse(StatusCodes.ServiceUnavailable, entity = "Candle backend is not ready"))
         }
 
     /**
      * Server routes
      */
-    private val routes: Route = Route.seal(
+    private val routes: Route = Route.seal {
         get {
             path("") {
                 implicit val scheduler: Scheduler = system.scheduler
@@ -125,7 +121,7 @@ class ProxyServer(context: ActorContext[CandleHistory], config: Config) extends 
                 }
             }
         }
-    )
+    }
 
 
     Http().bindAndHandle(routes, interface = serverAddress, port = bindPort)
