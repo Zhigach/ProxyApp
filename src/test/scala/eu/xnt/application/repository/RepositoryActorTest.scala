@@ -32,7 +32,7 @@ class RepositoryActorTest extends UnitTestSpec {
 
     it should "save quote into new candle" in {
         repositoryActor ! RepositoryActor.AddQuote(oldQuote(1, "TEST"))
-        testProbe.expectNoMessage(400 millis) //TODO как бы избавиться от костыля?
+        testProbe.expectNoMessage(400 millis)
         inMemoryCandleRepository.bufferSize("TEST") shouldEqual 2
     }
 

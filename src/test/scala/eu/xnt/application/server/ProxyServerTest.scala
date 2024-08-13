@@ -25,11 +25,11 @@ class ProxyServerTest extends UnitTestSpec {
     override protected def beforeAll(): Unit = {
 
         val oldQuotes = Source(List(oldQuote(9, "OLD"), oldQuote(1, "OLD")))
-          .map(q => ByteString(ByteBuffer.allocate(2).putShort(q.len).array() ++ encodeQuote(q)))
+          .map(q => ByteString(encodeQuoteWithLengthPrefix(q)))
 
         val quoteSource = Source(1 to 600).throttle(1, 1 second)
           .map(_ => randomQuote(ticker = "PS.TEST"))
-          .map(q => ByteString(ByteBuffer.allocate(2).putShort(q.len).array() ++ encodeQuote(q)))
+          .map(q => ByteString(encodeQuoteWithLengthPrefix(q)))
 
         val quoteFlow: Flow[ByteString, ByteString, NotUsed] =
             Flow.fromSinkAndSource(

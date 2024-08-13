@@ -27,7 +27,7 @@ class StreamReaderTest extends UnitTestSpec {
         val quoteSource =
             Source(1 to 2).throttle(1, 1 second, 1, ThrottleMode.Shaping).initialDelay(0 second)
               .map(_ => randomQuote(System.currentTimeMillis()))
-              .map(q => ByteString(ByteBuffer.allocate(2).putShort(q.len).array() ++ encodeQuote(q)))
+              .map(q => ByteString(encodeQuoteWithLengthPrefix(q)))
 
         val quoteFlow: Flow[ByteString, ByteString, NotUsed] = Flow.fromSinkAndSource(Sink.ignore, quoteSource)
 
@@ -42,6 +42,7 @@ class StreamReaderTest extends UnitTestSpec {
 
     override def afterAll(): Unit = {
         testKit.shutdownTestKit()
+        testKit.system.terminate()
         actorSystem.terminate()
     }
 

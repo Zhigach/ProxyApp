@@ -9,7 +9,7 @@ object CandleModels {
                       high: Double,
                       low: Double,
                       close: Double,
-                      volume: Int) extends JsonSupport //TODO это что ли "кейс класс обычно не наследуют от json трейтов"
+                      volume: Int)
 
     /**
      * Adds quote to an existing candle

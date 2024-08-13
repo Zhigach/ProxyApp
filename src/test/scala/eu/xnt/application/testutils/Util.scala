@@ -26,6 +26,10 @@ object Util {
         randomQuote((System.currentTimeMillis() / 60000 - ageInMinutes) * 60000 + 1, ticker)
     }
 
+    def encodeQuoteWithLengthPrefix(q: Quote): Array[Byte] = {
+        ByteBuffer.allocate(2).putShort(q.len).array() ++ encodeQuote(q)
+    }
+
     def encodeQuote(q: Quote): Array[Byte] = {
         val buffer = ByteBuffer.allocate(q.len)
           .order(java.nio.ByteOrder.BIG_ENDIAN)

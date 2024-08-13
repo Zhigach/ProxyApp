@@ -47,7 +47,7 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
 
 
     implicit val system: ActorSystem = ActorSystem("ProxyServer")
-    implicit val executionContext: ExecutionContextExecutor = system.dispatcher //FIXME глобальный и акторный ec - зло
+    implicit val executionContext: ExecutionContextExecutor = system.dispatcher
     implicit val materializer: Materializer = ActorMaterializer()
 
 
@@ -106,7 +106,6 @@ class ProxyServer(context: ActorContext[CandleHistory]) extends LazyLogging {
                             ContentTypes.`application/json`,
                             (Source(candles.candles) ++ source)
                               .map(can => ByteString(can.toJson.compactPrint + '\n'))
-                              //.map(can => ByteString(can.jsonFormat2() + '\n'))
                         )
                     )
                 }
